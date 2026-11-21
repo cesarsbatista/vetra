@@ -7,7 +7,7 @@ let sb=null,user=null,house=null,rev=null,channel=null,saveChain=Promise.resolve
 const savedLocalKey='vetra:v1',backupKey=id=>'vetra:v1:precloud:'+id;
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cleanPayload=p=>({items:Array.isArray(p?.items)?p.items:[],cards:Array.isArray(p?.cards)?p.cards:[],budgets:p?.budgets&&typeof p.budgets==='object'?p.budgets:{},settings:p?.settings&&typeof p.settings==='object'?p.settings:{},accounts:Array.isArray(p?.accounts)?p.accounts:[],fixed:Array.isArray(p?.fixed)?p.fixed:[],investments:Array.isArray(p?.investments)?p.investments:[]});
-function notify(message,type='info'){status.hidden=false;status.textContent=message;status.dataset.kind=type}
+function notify(message,type='info'){status.hidden=type==='ok';status.textContent=message;status.dataset.kind=type}
 function clearStatus(){status.hidden=true;status.textContent=''}
 function showSetup(html){panel.hidden=false;panel.innerHTML='<div class="family-dialog"><div class="family-icon">V</div>'+html+'</div>'}
 function hideSetup(){panel.hidden=true;panel.innerHTML=''}
