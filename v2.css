@@ -183,3 +183,10 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 
 /* Cabeçalho sem marca duplicada: somente a ação à direita */
 .app header .v2-header-add{margin-left:auto}
+
+/* Ação de cabeçalho alinhada ao título da página, sem faixa superior vazia */
+.app header{display:none!important}
+.v2-heading{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.v2-heading>div{min-width:0}
+.v2-heading .v2-header-add{margin-left:auto;flex:0 0 auto}
+@media(max-width:450px){.v2-heading{gap:10px;align-items:flex-start}.v2-heading h1{font-size:24px}.v2-heading .v2-header-add{align-self:center}}
