@@ -42,7 +42,15 @@ render();
 }
 function titleNav(){
 NAV.innerHTML=[['inicio','⌂','Início','Início'],['lancamentos','☷','Lançamentos','Lanç.'],['cartoes','▤','Cartões','Cartões'],['investimentos','◇','Investimentos','Invest.'],['planejamento','▦','Planejamento','Plan.'],['configuracoes','⚙','Configurações','Ajustes']].map(n=>'<button class="tab '+(page===n[0]?'active':'')+'" data-page="'+n[0]+'"><span class="ico">'+n[1]+'</span><span data-short="'+n[3]+'">'+n[2]+'</span></button>').join('');
-if(!HDR.querySelector('[data-action="new"]'))HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span><small>V2</small></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
+if(!HDR.querySelector('.v2-header-add'))HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
+const headerAction=HDR.querySelector('.v2-header-add');
+if(headerAction){
+const onSettings=page==='configuracoes';
+headerAction.dataset.action=onSettings?'logout':'new';
+headerAction.className=(onSettings?'v2-secondary':'v2-primary')+' v2-header-add';
+headerAction.innerHTML=onSettings?'Sair da conta':'＋ <span>Novo lançamento</span>';
+}
+HDR.querySelector('.brand small')?.remove();
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
 function bankName(name){const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const n=normalize(name);return BANKS.find(x=>x!=='Outro'&&n.includes(normalize(x)))||(n.startsWith('bb ')||n==='bb'?'Banco do Brasil':'Instituição')}
@@ -73,7 +81,7 @@ if(/banco do brasil/.test(text))return 'gold';
 return 'dark';
 }
 function plastic(c){
-return '<div class="v2-plastic v2-plastic--'+palette(c)+'"><div class="v2-plastic-head">'+logo(c.name)+'<span>'+esc(c.name||'Cartão')+'</span></div><div class="v2-plastic-num">'+(c.last4?'•••• '+esc(c.last4):'•••• ••••')+'</div><div class="v2-plastic-foot"><div><small>TITULAR</small><strong>'+esc(c.holder||'Não informado')+'</strong></div><b>'+esc(c.brand||'Cartão')+'</b></div></div>';
+return '<div class="v2-plastic v2-plastic--'+palette(c)+'"><div class="v2-plastic-head">'+logo(c.name)+'<span>'+esc(c.name||'Cartão')+'</span></div><div class="v2-plastic-num">'+(c.last4?'•••• •••• •••• '+esc(c.last4):'•••• •••• •••• ••••')+'</div><div class="v2-plastic-foot"><div><small>TITULAR</small><strong>'+esc(c.holder||'Não informado')+'</strong></div><b>'+esc(c.brand||'Cartão')+'</b></div></div>';
 }
 function fixedOccurrence(f,s){
 if(!f.active)return null;
@@ -130,7 +138,7 @@ const x=db.items.find(v=>v.id===editItem)||{};
 if(editItem){mode=x.type==='receita'?'receita':x.type==='investimento'?'investimento':'despesa';formPayment=x.payment||(x.type==='cartao'?'Crédito':'Pix');creditType=Number(x.installmentCount)>1?'parcelado':'avista'}
 const isExpense=mode==='despesa',isIncome=mode==='receita';
 const cardOptions=db.cards.map(c=>[c.id,c.nickname||c.name]);
-const accountOptions=db.accounts.map(c=>[c.id,(c.nickname||c.bank)+' · '+c.type]);
+const accountOptions=db.accounts.map(c=>[c.id,c.bank+' · '+(c.holder||'Titular não informado')+' · '+c.type]);
 const payment=formPayment;
 const paymentFields=isExpense?
  select('Pagamento','payment',['Crédito','Débito','Pix','Dinheiro'],payment)+
@@ -232,12 +240,11 @@ return banner('Configurações','Contas, cartões e preferências')+
 '<div class="v2-segments v2-settings-tabs">'+[['cartoes','Cartões'],['contas','Contas'],['familia','Família'],['dados','Dados']].map(a=>'<button class="'+(section===a[0]?'selected':'')+'" data-section="'+a[0]+'">'+a[1]+'</button>').join('')+'</div>'+
 (section==='cartoes'?cardsManagement():section==='contas'?'<div class="v2-toolbar">'+action('＋ Adicionar conta','newAccount')+'</div>'+
 '<div class="v2-panel"><h2>Contas bancárias</h2>'+
-(db.accounts.map(x=>'<div class="v2-item">'+logo(x.bank)+'<div class="v2-item-main"><strong>'+esc(x.nickname||x.bank)+'</strong><small>'+esc(x.bank)+' · '+esc(x.type)+'</small></div>'+
+(db.accounts.map(x=>'<div class="v2-item">'+logo(x.bank)+'<div class="v2-item-main"><strong>'+esc(x.bank)+'</strong><small>'+esc(x.holder||'Titular não informado')+' · '+esc(x.type)+'</small></div>'+
 '<button class="v2-secondary" data-action="editAccount:'+x.id+'">Editar</button><button class="v2-secondary v2-danger" data-action="removeAccount:'+x.id+'">Excluir</button></div>').join('')||'<p class="v2-empty">Nenhuma conta cadastrada.</p>')+'</div>':
 section==='familia'?'<div id="v2-family-panel">'+(window.VETRA_CLOUD?.settingsHTML?.()||'<div class="v2-panel">Acesse com sua conta para criar e compartilhar o orçamento familiar.</div>')+'</div>':
 '<div class="v2-panel"><h2>Seus dados</h2><div class="v2-buttons">'+action('Exportar backup JSON','backup',true)+action('Exportar CSV','csv',true)+'</div><p class="v2-help">Backups são importantes antes de grandes alterações.</p></div>')+
-'<div class="v2-panel v2-exit"><h2>Conta</h2>'+pill(window.VETRA_CURRENT_SESSION?.user?.email||'Modo local')+
-'<div class="v2-buttons">'+action('Sair da conta','logout',true)+'</div></div>';
+'';
 }
 function modal(title,content){
 const e=document.getElementById('v2-modal');e.innerHTML='<div class="v2-modal-dialog"><div class="v2-modal-head"><h2>'+esc(title)+'</h2><button data-action="closeModal" aria-label="Fechar">×</button></div>'+content+'</div>';e.hidden=false;
@@ -258,8 +265,9 @@ function openAccount(id){const a=db.accounts.find(x=>x.id===id)||{};editAccount=
 modal(id?'Editar conta':'Cadastrar conta bancária','<form id="v2-account-form">'+
 field('Banco','bank',a.bank||'','text','required maxlength="90" list="v2-bank-list"')+
 '<datalist id="v2-bank-list">'+BANKS.filter(x=>x!=='Outro').map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'+
+field('Titular','holder',a.holder||'','text','required maxlength="100" autocomplete="name"')+
 select('Tipo de conta','type',['Nacional','Internacional'],a.type||'Nacional')+
-field('Apelido (opcional)','nickname',a.nickname||'','text','maxlength="80"')+'<button class="v2-primary">Salvar conta</button></form>');
+'<button class="v2-primary">Salvar conta</button></form>');
 }
 function openFixed(id){
 const a=db.fixed.find(x=>x.id===id)||{};editFixed=id||null;
@@ -270,7 +278,7 @@ field('Valor previsto (R$)','amount',a.amount??'','number','min="0" step="0.01" 
 '<div class="v2-two">'+field('Dia do vencimento','due',a.due||10,'number','min="1" max="31" required')+
 select('Frequência','frequency',['Mensal','Anual'],a.frequency||'Mensal')+'</div>'+
 select('Pagamento','method',['Pix','Débito','Crédito','Dinheiro','Boleto','Transferência'],a.method||'Débito')+
-'<label class="v2-field">Conta ou cartão (opcional)<select name="paymentSource"><option value="">Nenhum vínculo</option>'+db.accounts.map(x=>'<option value="conta:'+esc(x.id)+'" '+(a.paymentSource==='conta:'+x.id?'selected':'')+'>'+esc('Conta · '+(x.nickname||x.bank))+'</option>').join('')+db.cards.map(x=>'<option value="cartao:'+esc(x.id)+'" '+(a.paymentSource==='cartao:'+x.id?'selected':'')+'>'+esc('Cartão · '+(x.nickname||x.name))+'</option>').join('')+'</select></label>'+
+'<label class="v2-field">Conta ou cartão (opcional)<select name="paymentSource"><option value="">Nenhum vínculo</option>'+db.accounts.map(x=>'<option value="conta:'+esc(x.id)+'" '+(a.paymentSource==='conta:'+x.id?'selected':'')+'>'+esc('Conta · '+x.bank+' · '+(x.holder||'Titular não informado'))+'</option>').join('')+db.cards.map(x=>'<option value="cartao:'+esc(x.id)+'" '+(a.paymentSource==='cartao:'+x.id?'selected':'')+'>'+esc('Cartão · '+(x.nickname||x.name))+'</option>').join('')+'</select></label>'+
 '<div class="v2-two">'+field('Data de início','start',a.start||month+'-01','date','required')+
 field('Data de término (opcional)','end',a.end||'','date')+'</div>'+
 '<div class="v2-two">'+field('Total de parcelas (opcional)','termCount',a.termCount||'','number','min="1" max="600"')+field('Parcela atual no início','currentInstallment',a.currentInstallment||1,'number','min="1" max="600"')+'</div>'+
@@ -301,7 +309,7 @@ field('Data do pagamento','date',paid.date||today(),'date')+
 '<button class="v2-primary">Salvar mês</button></form>');
 }
 function download(name,text,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function csvExport(){const headers=['Data','Tipo','Origem/Estabelecimento','Categoria','Valor','Pagamento','Cartão','Conta','Situação'];const lines=db.items.map(x=>[x.date,x.type,itemLabel(x),x.category,x.amount,x.payment||'',db.cards.find(y=>y.id===x.cardId)?.name||'',db.accounts.find(y=>y.id===x.accountId)?.nickname||'',x.status]);download('vetra-v2-lancamentos.csv','\uFEFF'+[headers,...lines].map(a=>a.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv;charset=utf-8')}
+function csvExport(){const headers=['Data','Tipo','Origem/Estabelecimento','Categoria','Valor','Pagamento','Cartão','Conta','Situação'];const lines=db.items.map(x=>[x.date,x.type,itemLabel(x),x.category,x.amount,x.payment||'',db.cards.find(y=>y.id===x.cardId)?.name||'',db.accounts.find(y=>y.id===x.accountId)?.bank||'',x.status]);download('vetra-v2-lancamentos.csv','\uFEFF'+[headers,...lines].map(a=>a.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv;charset=utf-8')}
 function render(){
  titleNav();
  const pageHtml={inicio:home,lancamentos:transactions,cartoes:cardPurchases,investimentos:investmentsPage,planejamento:fixedPage,configuracoes:settings,novo:newForm};
@@ -425,7 +433,9 @@ db.cards=editCard?db.cards.map(x=>x.id===id?{...x,...card}:x):[...db.cards,card]
 closeModal();write();return;
 }
 if(f.id==='v2-account-form'){
-const account={id:editAccount||uid(),bank:String(v.get('bank')||'').trim(),type:String(v.get('type')),nickname:String(v.get('nickname')||'')};if(!account.bank)return alert('Informe o banco.');
+const existing=db.accounts.find(x=>x.id===editAccount)||{};
+const account={...existing,id:editAccount||uid(),bank:String(v.get('bank')||'').trim(),holder:String(v.get('holder')||'').trim(),type:String(v.get('type'))};
+if(!account.bank||!account.holder)return alert('Informe o banco e o titular da conta.');
 db.accounts=editAccount?db.accounts.map(x=>x.id===editAccount?account:x):[...db.accounts,account];closeModal();write();return;
 }
 if(f.id==='v2-fixed-form'){
