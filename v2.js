@@ -97,21 +97,56 @@ return {paymentNumber,id:f.id,description:f.name,amount:Number(paid?.amount??f.a
 }
 const fixedForMonth=s=>db.fixed.map(f=>fixedOccurrence(f,s)).filter(Boolean);
 function monthly(){
-const its=forMonth(month),inc=sum(its.filter(x=>x.type==='receita'&&x.status==='realizado')),out=sum(its.filter(x=>spent(x)&&x.status==='realizado'));
-const plannedIncome=sum(its.filter(x=>x.type==='receita')),plannedOut=sum(its.filter(spent));
-const fixed=fixedForMonth(month),fixedActual=fixed.filter(x=>x.paid).reduce((a,x)=>a+x.amount,0),fixedPlan=fixed.reduce((a,x)=>a+x.amount,0);
+const its=forMonth(month);
+const inc=sum(its.filter(x=>x.type==='receita'&&x.status==='realizado'));
+const out=sum(its.filter(x=>spent(x)&&x.status==='realizado'));
+const plannedIncome=sum(its.filter(x=>x.type==='receita'));
+const plannedOut=sum(its.filter(spent));
+const incomePending=sum(its.filter(x=>x.type==='receita'&&x.status!=='realizado'));
+const variablePending=sum(its.filter(x=>spent(x)&&x.status!=='realizado'));
+const fixed=fixedForMonth(month);
+const fixedActual=fixed.filter(x=>x.paid).reduce((a,x)=>a+x.amount,0);
+const fixedPending=fixed.filter(x=>!x.paid).reduce((a,x)=>a+x.amount,0);
+const fixedPlan=fixedActual+fixedPending;
 const investmentFlows=its.filter(x=>x.type==='investimento');
-const transferValue=(x)=>x.category==='Resgate'?-Number(x.amount||0):Number(x.amount||0);
+const transferValue=x=>x.category==='Resgate'?-Number(x.amount||0):Number(x.amount||0);
 const invActual=investmentFlows.filter(x=>x.status==='realizado').reduce((v,x)=>v+transferValue(x),0);
 const invPlan=investmentFlows.reduce((v,x)=>v+transferValue(x),0);
-return {its,inc,out,fixed,fixedActual,fixedPlan,invActual,invPlan,net:inc-out-fixedActual-invActual,projected:plannedIncome-plannedOut-fixedPlan-invPlan}
+const invPending=invPlan-invActual;
+return {its,inc,out,fixed,fixedActual,fixedPlan,fixedPending,plannedIncome,plannedOut,incomePending,variablePending,invActual,invPlan,invPending,net:inc-out-fixedActual-invActual,projected:plannedIncome-plannedOut-fixedPlan-invPlan}
+}
+function forecastRow({title,detail,date,amount,kind}){
+return '<div class="v2-forecast-row"><span class="v2-forecast-sign '+(kind==='income'?'v2-forecast-sign--income':'')+'">'+(kind==='income'?'+':'−')+'</span>'+
+'<div class="v2-item-main"><strong>'+esc(title)+'</strong><small>'+esc(detail)+' · '+esc(date)+'</small></div>'+
+'<b>'+CM(amount)+'</b></div>';
+}
+function forecastPanel(a){
+const fixedPending=a.fixed.filter(f=>!f.paid);
+const pendingItems=a.its.filter(x=>x.status!=='realizado'&&(x.type==='receita'||spent(x)));
+const entries=[
+...pendingItems.map(x=>({title:x.origin||x.description||'Sem descrição',detail:x.type==='receita'?'Receita prevista':x.cardId?'Compra no cartão':'Despesa variável prevista',date:x.date,amount:Number(x.amount)||0,kind:x.type==='receita'?'income':'expense'})),
+...fixedPending.map(x=>({title:x.description,detail:'Despesa fixa · '+esc(x.category||'Outros'),date:x.date,amount:x.amount,kind:'expense'}))
+].sort((x,y)=>x.date.localeCompare(y.date));
+const forecastNet=a.incomePending-a.variablePending-a.fixedPending-a.invPending;
+return '<section class="v2-forecast v2-panel" aria-label="Previsões do mês">'+
+'<div class="v2-panel-top"><div><h2>Previsto para '+monthTitle(month)+'</h2><p class="v2-sub">Valores pendentes, ainda não realizados</p></div>'+pill(entries.length+' '+(entries.length===1?'compromisso':'registros'))+'</div>'+
+'<div class="v2-forecast-grid">'+
+[['Receitas a receber',a.incomePending,'income'],['Despesas variáveis previstas',a.variablePending,'expense'],['Despesas fixas a pagar',a.fixedPending,'expense'],['Saldo das previsões pendentes',forecastNet,'balance']].map(([label,value,kind])=>
+'<div class="v2-forecast-kpi"><small>'+label+'</small><strong>'+CM(value)+'</strong>'+(kind==='balance'?'<span>Inclui aportes e resgates previstos</span>':'')+'</div>').join('')+
+'</div>'+
+'<div class="v2-forecast-explainer"><span>Já realizado: <b>'+CM(a.net)+'</b></span><span>Movimentos pendentes: <b>'+CM(forecastNet)+'</b></span><span>Saldo projetado: <b>'+CM(a.projected)+'</b></span></div>'+
+'<div class="v2-panel-top v2-forecast-list-title"><h3>Próximos lançamentos previstos</h3>'+action('Ver lançamentos','transactions',true)+'</div>'+
+(entries.length?entries.slice(0,8).map(forecastRow).join(''):'<p class="v2-empty">Nenhum lançamento pendente neste mês.</p>')+
+(entries.length>8?'<p class="v2-help">Exibindo os oito primeiros de '+entries.length+' registros pendentes.</p>':'')+
+'</section>';
 }
 function home(){
 const a=monthly(),invest=investmentTotals(),categories={};
 a.its.filter(spent).forEach(x=>{const k=x.category||'Outros';categories[k]=(categories[k]||0)+Number(x.amount||0)});
 return banner('Visão geral','Seu controle financeiro pessoal e familiar')+monthBar()+
-'<div class="v2-overview"><div class="v2-hero"><small>Saldo realizado do mês</small><strong>'+CM(a.net)+'</strong><span>Projeção '+CM(a.projected)+'</span></div>'+
-[['Receitas recebidas',a.inc],['Despesas variáveis',a.out],['Despesas fixas pagas',a.fixedActual],['Patrimônio investido',invest.total]].map(([t,v])=>'<div class="v2-kpi"><small>'+t+'</small><strong>'+CM(v)+'</strong></div>').join('')+'</div>'+
+'<div class="v2-overview"><div class="v2-hero"><small>Saldo realizado do mês</small><strong>'+CM(a.net)+'</strong><span>Projeção para o mês '+CM(a.projected)+'</span></div>'+
+[['Receitas recebidas',a.inc],['Despesas variáveis realizadas',a.out],['Despesas fixas pagas',a.fixedActual],['Patrimônio investido',invest.total]].map(([t,v])=>'<div class="v2-kpi"><small>'+t+'</small><strong>'+CM(v)+'</strong></div>').join('')+'</div>'+
+forecastPanel(a)+
 '<div class="v2-columns"><section class="v2-panel"><div class="v2-panel-top"><h2>Despesas por categoria</h2>'+pill(monthTitle(month))+'</div>'+
 (Object.entries(categories).length?Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([key,value])=>'<div class="v2-metric"><span>'+esc(key)+'</span><b>'+CM(value)+'</b></div>').join(''):'<p class="v2-empty">Ainda não há despesas variáveis registradas.</p>')+'</section>'+
 '<section class="v2-panel"><div class="v2-panel-top"><h2>Próximos compromissos fixos</h2>'+action('Ver planejamento','planning',true)+'</div>'+
@@ -330,6 +365,7 @@ if(action==='new'){setupEntry();return}
 if(action==='prevMonth'||action==='nextMonth'){month=addMonth(month,action==='prevMonth'?-1:1);render();return}
 if(action==='closeModal'){closeModal();return}
 if(action==='planning'){page='planejamento';section='fixas';render();return}
+if(action==='transactions'){go('lancamentos');return}
 if(action==='newCard'){openCard(null);return}
 if(action==='newAccount'){openAccount(null);return}
 if(action==='newFixed'){openFixed(null);return}
