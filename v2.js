@@ -392,9 +392,20 @@ if(ordered[i].primary||ordered[j].primary)return alert('O cartão principal perm
 [ordered[i],ordered[j]]=[ordered[j],ordered[i]];db.cards=ordered;write();
 }
 });
+function rerenderEntryPreserving(){
+const prev=document.getElementById('v2-entry'),values={};
+if(prev)for(const element of prev.elements){if(element.name)values[element.name]=element.value}
+render();
+const next=document.getElementById('v2-entry');
+if(next)for(const element of next.elements){
+if(element.name&&Object.prototype.hasOwnProperty.call(values,element.name)&&Array.from(element.options||[]).some(o=>o.value===values[element.name])||element.name&&element.tagName!=='SELECT'&&Object.prototype.hasOwnProperty.call(values,element.name)){
+ element.value=values[element.name]
+}
+}
+}
 document.addEventListener('change',e=>{
-if(e.target.name==='payment'&&e.target.closest('#v2-entry')){formPayment=e.target.value;render()}
-if(e.target.name==='creditType'&&e.target.closest('#v2-entry')){creditType=e.target.value==='Parcelado'?'parcelado':'avista';render()}
+if(e.target.name==='payment'&&e.target.closest('#v2-entry')){formPayment=e.target.value;rerenderEntryPreserving()}
+if(e.target.name==='creditType'&&e.target.closest('#v2-entry')){creditType=e.target.value==='Parcelado'?'parcelado':'avista';rerenderEntryPreserving()}
 });
 document.addEventListener('submit',e=>{
 const f=e.target;if(!f.id.startsWith('v2-'))return;e.preventDefault();const v=new FormData(f);
