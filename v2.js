@@ -133,7 +133,7 @@ const invPending=invPlan-invActual;
 return {its,inc,out,fixed,fixedActual,fixedPlan,fixedPending,plannedIncome,plannedOut,incomePending,variablePending,invActual,invPlan,invPending,net:inc-out-fixedActual-invActual,projected:plannedIncome-plannedOut-fixedPlan-invPlan}
 }
 function forecastRow({title,detail,date,amount,kind}){
-return '<div class="v2-forecast-row"><span class="v2-forecast-sign '+(kind==='income'?'v2-forecast-sign--income':'')+'">'+(kind==='income'?'+':'−')+'</span>'+
+return '<div class="v2-forecast-row"><span class="v2-forecast-sign '+(kind==='income'?'v2-forecast-sign--income':'v2-forecast-sign--expense')+'">'+(kind==='income'?'+':'−')+'</span>'+
 '<div class="v2-item-main"><strong>'+esc(title)+'</strong><small>'+esc(detail)+' · '+esc(date)+'</small></div>'+
 '<b>'+CM(amount)+'</b></div>';
 }
