@@ -46,7 +46,20 @@ if(!HDR.querySelector('[data-action="new"]'))HDR.innerHTML='<div class="brand"><
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
 function bankName(name){const n=String(name||'').toLowerCase();return BANKS.find(x=>x!=='Outro'&&n.includes(x.toLowerCase()))||'Instituição'}
-function logo(name){const brand=bankName(name);return '<span class="v2-bank-logo" aria-label="'+esc(brand)+'">'+esc(brand==='Instituição'?'◇':brand.slice(0,2).toUpperCase())+'</span>'}
+function logo(name){
+const brand=bankName(name);
+const paths={
+'Banco do Brasil':'Banco_do_Brasil_logo.svg',
+'Itaú':'Itaú_Unibanco_logo_2023.svg',
+'Caixa':'Caixa_Econômica_Federal_logo_2026.svg',
+'Bradesco':'Banco_Bradesco_logo.svg',
+'Nubank':'Nubank_logo_2021.svg',
+'Santander':'Banco_Santander_Logotipo.svg'
+};
+const url=paths[brand]?'https://commons.wikimedia.org/wiki/Special:FilePath/'+encodeURIComponent(paths[brand]):'';
+return '<span class="v2-bank-logo" aria-label="'+esc(brand)+'">'+esc(brand==='Instituição'?'◇':brand.slice(0,2).toUpperCase())+
+(url?'<img src="'+url+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':'')+'</span>';
+}
 function palette(c){
 const text=(c.name||'').toLowerCase();
 if(/smiles platinum/.test(text))return 'smiles';
