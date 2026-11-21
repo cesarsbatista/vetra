@@ -317,7 +317,7 @@ return banner('Configurações','Contas, cartões e preferências')+
 (db.accounts.map(x=>'<div class="v2-item">'+logo(x.bank,'account')+'<div class="v2-item-main"><strong>'+esc(x.bank)+'</strong><small>'+esc(x.holder||'Titular não informado')+' · '+esc(x.type)+'</small></div>'+
 '<button class="v2-secondary" data-action="editAccount:'+x.id+'">Editar</button><button class="v2-secondary v2-danger" data-action="removeAccount:'+x.id+'">Excluir</button></div>').join('')||'<p class="v2-empty">Nenhuma conta cadastrada.</p>')+'</div>':
 section==='familia'?'<div id="v2-family-panel">'+(window.VETRA_CLOUD?.settingsHTML?.()||'<div class="v2-panel">Acesse com sua conta para criar e compartilhar o orçamento familiar.</div>')+'</div>':
-'<div class="v2-panel"><h2>Seus dados</h2><div class="v2-buttons">'+action('Exportar backup JSON','backup',true)+action('Exportar CSV','csv',true)+'</div><p class="v2-help">Backups são importantes antes de grandes alterações.</p></div>')+
+'<div class="v2-panel"><h2>Relatório detalhado de despesas</h2><p class="v2-help">Analise despesas por tipo, categoria, mês, cartão e lançamento. As despesas fixas entram uma vez por competência, com o valor efetivo ou previsto. Receitas e transferências ficam fora deste relatório.</p>'+'<div class="v2-report-filters"><label class="v2-field">Mês inicial<input type="month" id="v2-report-start" value="'+esc(month.slice(0,4)+'-01')+'"></label><label class="v2-field">Mês final<input type="month" id="v2-report-end" value="'+esc(month.slice(0,4)+'-12')+'"></label></div>'+'<div class="v2-buttons">'+action('Baixar relatório CSV','expenseReportCSV')+action('Baixar relatório para PDF','expenseReportHTML',true)+'</div>'+'<p class="v2-help">CSV compatível com Excel (separador ponto e vírgula). Para PDF, abra o arquivo HTML baixado e escolha Imprimir → Salvar como PDF. Valores de faturas não são adicionados novamente quando suas compras já estão discriminadas.</p></div>'+'<div class="v2-panel"><h2>Seus dados</h2><div class="v2-buttons">'+action('Exportar backup JSON','backup',true)+action('Exportar CSV','csv',true)+'</div><p class="v2-help">Backups são importantes antes de grandes alterações.</p></div>')+
 '';
 }
 function modal(title,content){
@@ -403,6 +403,130 @@ field('Data do pagamento','date',paid.date||today(),'date')+
 '<button class="v2-primary">Salvar mês</button></form>');
 }
 function download(name,text,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+
+/* Relatório financeiro de despesas. Opera exclusivamente sobre o orçamento já carregado. */
+function reportRange(){
+const start=document.getElementById('v2-report-start')?.value||month.slice(0,4)+'-01';
+const end=document.getElementById('v2-report-end')?.value||month.slice(0,4)+'-12';
+if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(start)||!/^\d{4}-(0[1-9]|1[0-2])$/.test(end)||start>end){
+alert('Informe um período válido, com mês inicial anterior ou igual ao mês final.');return null;
+}
+const [a,b]=[start,end].map(x=>Number(x.slice(0,4))*12+Number(x.slice(5,7)));
+if(b-a>119){alert('Selecione um intervalo de no máximo 10 anos.');return null}
+return {start,end};
+}
+function reportCents(value){return Math.round((Number(value)||0)*100)}
+function reportMoney(cents){return (cents/100).toFixed(2).replace('.',',')}
+function expenseReportData(start,end){
+const months=[];for(let m=start;m<=end;m=addMonth(m,1))months.push(m);
+const rows=[];
+const cardName=id=>{const card=db.cards.find(x=>x.id===id);return card?(card.nickname||card.name)+' · '+(card.holder||'Titular não informado'):'Cartão não identificado'};
+const accountName=id=>db.accounts.find(x=>x.id===id)?.bank||'';
+for(const x of db.items){
+if(!spent(x)||ym(x.date)<start||ym(x.date)>end)continue;
+const onCard=!!x.cardId||x.payment==='Crédito'||x.type==='cartao';
+rows.push({
+month:ym(x.date),date:x.date,description:x.description||'Despesa sem descrição',
+type:onCard?'Cartão de crédito':'Despesa avulsa / variável',
+category:x.category||'Sem categoria',amount:reportCents(x.amount),status:x.status==='realizado'?'Realizado (lançamento)':'Previsto',
+payment:x.payment||'Não informado',card:onCard?cardName(x.cardId):'',
+account:accountName(x.accountId),installment:x.installmentNo?(x.installmentNo+'/'+(x.installmentCount||'?')):'',
+notes:x.notes||'',source:'Lançamento',uniqueId:x.id||''
+});
+}
+for(const m of months){
+for(const fixed of fixedForMonth(m)){
+rows.push({
+month:m,date:fixed.paid?(fixed.realDate||fixed.date):fixed.date,
+description:fixed.description||'Despesa fixa',type:'Despesa fixa',
+category:fixed.category||'Sem categoria',amount:reportCents(fixed.amount),
+status:fixed.paid?'Pago':'Previsto / não confirmado',
+payment:fixed.method||'Não informado',card:'',
+account:fixed.source.paymentSource?.startsWith('conta:')?accountName(fixed.source.paymentSource.slice(6)):'',
+installment:fixed.source.termCount?fixed.paymentNumber+'/'+fixed.source.termCount:'',
+notes:fixed.source.payments?.[m]?.notes||'',source:'Despesa fixa',uniqueId:fixed.id+'_'+m
+});
+}
+}
+rows.sort((a,b)=>a.month.localeCompare(b.month)||a.type.localeCompare(b.type)||a.category.localeCompare(b.category)||a.description.localeCompare(b.description));
+const total=items=>items.reduce((acc,x)=>acc+x.amount,0);
+const summarize=fields=>{
+const group=new Map();
+for(const r of rows){const key=JSON.stringify(fields.map(f=>r[f]));if(!group.has(key))group.set(key,{values:fields.map(f=>r[f]),count:0,actual:0,planned:0,total:0});
+const g=group.get(key);g.count++;g.total+=r.amount;
+if(r.status==='Pago'||r.status.startsWith('Realizado'))g.actual+=r.amount;else g.planned+=r.amount;
+}
+return [...group.values()].sort((a,b)=>b.total-a.total||String(a.values[0]).localeCompare(String(b.values[0]),'pt-BR'));
+};
+return {start,end,rows,total:total(rows),realized:total(rows.filter(r=>r.status==='Pago'||r.status.startsWith('Realizado'))),
+planned:total(rows.filter(r=>r.status!=='Pago'&&!r.status.startsWith('Realizado'))),
+byType:summarize(['type']),byCategory:summarize(['type','category']),
+byMonth:summarize(['month']),byPayment:summarize(['payment']),byCard:summarize(['card'])};
+}
+function reportCsvCell(value){
+let s=String(value??'');
+if(/^[\s]*[=+\-@\t\r]/.test(s))s="'"+s;
+return '"'+s.replace(/"/g,'""')+'"';
+}
+function expenseReportCSV(){
+const range=reportRange();if(!range)return;
+const r=expenseReportData(range.start,range.end),output=[];
+const line=arr=>output.push(arr.map(reportCsvCell).join(';'));
+const blank=()=>output.push('');
+line(['VETRA · RELATÓRIO DETALHADO DE DESPESAS']);
+line(['Período',r.start,r.end]);
+line(['Critério','Competência mensal; cartão de crédito não somado novamente ao pagamento da fatura']);
+line(['Critério de realizado','Lançamento realizado não comprova necessariamente quitação da fatura do cartão']);
+line(['Total geral (R$)',reportMoney(r.total)]);
+line(['Realizado / pago (R$)',reportMoney(r.realized)]);
+line(['Previsto / não confirmado (R$)',reportMoney(r.planned)]);
+line(['Quantidade de registros',r.rows.length]);blank();
+function section(title,headers,groups){
+line([title]);line([...headers,'Quantidade','Realizado (R$)','Previsto (R$)','Total (R$)']);
+for(const g of groups)line([...g.values,g.count,reportMoney(g.actual),reportMoney(g.planned),reportMoney(g.total)]);
+blank();
+}
+section('RESUMO POR TIPO',['Tipo'],r.byType);
+section('RESUMO POR TIPO E CATEGORIA',['Tipo','Categoria'],r.byCategory);
+section('EVOLUÇÃO MENSAL',['Mês'],r.byMonth);
+section('RESUMO POR FORMA DE PAGAMENTO',['Forma de pagamento'],r.byPayment);
+section('RESUMO POR CARTÃO (SEM DUPLICAR FATURAS)',['Cartão'],r.byCard.filter(g=>g.values[0]));
+line(['DETALHAMENTO DE TODOS OS LANÇAMENTOS']);
+line(['Competência','Data de referência','Tipo','Categoria','Descrição','Valor (R$)','Situação','Forma de pagamento','Cartão','Conta','Parcela','Origem do registro','Observações']);
+for(const x of r.rows)line([x.month,x.date,x.type,x.category,x.description,reportMoney(x.amount),x.status,x.payment,x.card,x.account,x.installment,x.source,x.notes]);
+download('VETRA-relatorio-despesas-'+r.start+'-a-'+r.end+'.csv','\uFEFF'+output.join('\r\n'),'text/csv;charset=utf-8');
+}
+function expenseReportHTML(){
+const range=reportRange();if(!range)return;
+const r=expenseReportData(range.start,range.end);
+const trs=(groups)=>groups.map(g=>'<tr>'+g.values.map(x=>'<td>'+esc(x)+'</td>').join('')+
+'<td class="num">'+g.count+'</td><td class="num">'+CM(g.actual/100)+'</td><td class="num">'+CM(g.planned/100)+'</td><td class="num"><strong>'+CM(g.total/100)+'</strong></td></tr>').join('');
+const table=(title,headers,groups)=>'<section><h2>'+esc(title)+'</h2><table><thead><tr>'+[...headers,'Registros','Realizado / pago','Previsto','Total'].map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+trs(groups)+'</tbody></table></section>';
+const detail=r.rows.map(x=>'<tr><td>'+esc(x.month)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.category)+'</td>'+
+'<td>'+esc(x.description)+(x.installment?' <small>('+esc(x.installment)+')</small>':'')+'</td><td class="num">'+CM(x.amount/100)+'</td><td>'+esc(x.status)+'</td>'+
+'<td>'+esc(x.card||x.payment)+'</td></tr>').join('');
+const content='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+'<title>VETRA · Relatório de despesas '+esc(r.start)+' a '+esc(r.end)+'</title>'+
+'<style>@page{size:A4 landscape;margin:13mm}*{box-sizing:border-box}body{font:12px/1.45 system-ui,Arial,sans-serif;color:#222;margin:24px auto;max-width:1180px;padding:0 18px}'+
+'h1{font-size:27px;letter-spacing:-.04em;margin-bottom:2px}h2{font-size:17px;margin:28px 0 8px}p,small{color:#666}.summary{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0}.box{flex:1;min-width:175px;background:#f5f5f5;padding:15px;border-radius:10px}'+
+'.box small{display:block}.box b{font-size:19px}.num{text-align:right;white-space:nowrap}table{width:100%;border-collapse:collapse;font-size:10px}th{text-align:left;background:#eee;border-bottom:1px solid #bbb}th,td{padding:7px 5px;border-bottom:1px solid #e6e6e6;vertical-align:top}tr{break-inside:avoid}'+
+'.toolbar{margin-bottom:24px}.toolbar button{border:0;background:#222;color:white;border-radius:8px;padding:10px 18px;cursor:pointer}section{break-inside:auto}footer{margin:30px 0}'+
+'@media print{body{margin:0;max-width:none;padding:0}.toolbar{display:none}.box{background:#f5f5f5!important;print-color-adjust:exact}}'+
+'</style></head><body><div class="toolbar"><button onclick="window.print()">Imprimir ou salvar em PDF</button></div><h1>VETRA</h1>'+
+'<p>Relatório detalhado de despesas · '+esc(monthTitle(r.start))+' a '+esc(monthTitle(r.end))+'</p>'+
+'<div class="summary"><div class="box"><small>Total de despesas</small><b>'+CM(r.total/100)+'</b></div>'+
+'<div class="box"><small>Realizado / pago</small><b>'+CM(r.realized/100)+'</b></div>'+
+'<div class="box"><small>Previsto / não confirmado</small><b>'+CM(r.planned/100)+'</b></div>'+
+'<div class="box"><small>Registros</small><b>'+r.rows.length+'</b></div></div>'+
+'<p>Critério: competência mensal. Despesas fixas são incluídas uma vez por mês. Compras no cartão são consideradas conforme os lançamentos existentes, sem acrescentar pagamentos de fatura novamente. A situação “realizado” de compras não comprova quitação da fatura.</p>'+
+table('Despesas por tipo',['Tipo'],r.byType)+table('Despesas por tipo e categoria',['Tipo','Categoria'],r.byCategory)+
+table('Evolução mensal',['Mês'],r.byMonth)+table('Por forma de pagamento',['Forma de pagamento'],r.byPayment)+
+table('Por cartão',['Cartão'],r.byCard.filter(g=>g.values[0]))+
+'<section><h2>Detalhamento individual</h2><table><thead><tr>'+['Mês','Tipo','Categoria','Descrição / parcela','Valor','Situação','Pagamento / cartão'].map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+detail+'</tbody></table></section>'+
+'<footer><small>Gerado localmente a partir dos registros disponíveis no VETRA. Este documento não substitui comprovantes ou extratos bancários.</small></footer></body></html>';
+download('VETRA-relatorio-despesas-'+r.start+'-a-'+r.end+'.html',content,'text/html;charset=utf-8');
+}
+
 function csvExport(){const headers=['Data','Tipo','Origem/Estabelecimento','Categoria','Valor','Pagamento','Cartão','Conta','Situação'];const lines=db.items.map(x=>[x.date,x.type,itemLabel(x),x.category,x.amount,x.payment||'',db.cards.find(y=>y.id===x.cardId)?.name||'',db.accounts.find(y=>y.id===x.accountId)?.bank||'',x.status]);download('vetra-v2-lancamentos.csv','\uFEFF'+[headers,...lines].map(a=>a.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv;charset=utf-8')}
 function render(){
  // Keep header controls alive across page renders; the OTP sign-out handler
@@ -446,6 +570,8 @@ if(action==='newFixed'){openFixed(null);return}
 if(action==='newInvestment'){openInvestment(null);return}
 if(action==='backup'){download('vetra-v2-backup.json',JSON.stringify(db,null,2),'application/json');return}
 if(action==='csv'){csvExport();return}
+if(action==='expenseReportCSV'){expenseReportCSV();return}
+if(action==='expenseReportHTML'){expenseReportHTML();return}
 if(action==='logout'){if(window.VETRA_CLOUD&&!window.VETRA_CLOUD.canLogout())return alert('Existem alterações não sincronizadas. Faça backup antes de sair.');document.getElementById('profile')?.click();return}
 const [cmd,id]=action.split(':');
 if(cmd==='editCard'){openCard(id);return}
