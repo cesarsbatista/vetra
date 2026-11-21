@@ -42,7 +42,7 @@ render();
 }
 function titleNav(){
 NAV.innerHTML=[['inicio','⌂','Início'],['lancamentos','☷','Lançamentos'],['cartoes','▤','Cartões'],['investimentos','◇','Investimentos'],['planejamento','▦','Planejamento'],['configuracoes','⚙','Configurações']].map(n=>'<button class="tab '+(page===n[0]?'active':'')+'" data-page="'+n[0]+'"><span class="ico">'+n[1]+'</span><span>'+n[2]+'</span></button>').join('');
-HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span><small>V2</small></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
+if(!HDR.querySelector('[data-action="new"]'))HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span><small>V2</small></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
 function bankName(name){const n=String(name||'').toLowerCase();return BANKS.find(x=>x!=='Outro'&&n.includes(x.toLowerCase()))||'Instituição'}
@@ -109,7 +109,7 @@ return due<=closing?addMonth(closeMonth,1):closeMonth;
 }
 function newForm(){
 const x=db.items.find(v=>v.id===editItem)||{};
-if(editItem){mode=x.type==='receita'?'receita':x.type==='investimento'?'investimento':'despesa';formPayment=x.payment||(x.type==='cartao'?'Crédito':'Pix')}
+if(editItem){mode=x.type==='receita'?'receita':x.type==='investimento'?'investimento':'despesa';formPayment=x.payment||(x.type==='cartao'?'Crédito':'Pix');creditType=Number(x.installmentCount)>1?'parcelado':'avista'}
 const isExpense=mode==='despesa',isIncome=mode==='receita';
 const cardOptions=db.cards.map(c=>[c.id,c.nickname||c.name]);
 const accountOptions=db.accounts.map(c=>[c.id,(c.nickname||c.bank)+' · '+c.type]);
@@ -223,7 +223,9 @@ field('Dia de vencimento','due',c.due||12,'number','min="1" max="31" required')+
 }
 function openAccount(id){const a=db.accounts.find(x=>x.id===id)||{};editAccount=id||null;
 modal(id?'Editar conta':'Cadastrar conta bancária','<form id="v2-account-form">'+
-select('Banco','bank',BANKS,a.bank||BANKS[0])+select('Tipo de conta','type',['Nacional','Internacional'],a.type||'Nacional')+
+field('Banco','bank',a.bank||'','text','required maxlength="90" list="v2-bank-list"')+
+'<datalist id="v2-bank-list">'+BANKS.filter(x=>x!=='Outro').map(x=>'<option value="'+esc(x)+'"></option>').join('')+'</datalist>'+
+select('Tipo de conta','type',['Nacional','Internacional'],a.type||'Nacional')+
 field('Apelido (opcional)','nickname',a.nickname||'','text','maxlength="80"')+'<button class="v2-primary">Salvar conta</button></form>');
 }
 function openFixed(id){
@@ -235,7 +237,7 @@ field('Valor previsto (R$)','amount',a.amount??'','number','min="0" step="0.01" 
 '<div class="v2-two">'+field('Dia do vencimento','due',a.due||10,'number','min="1" max="31" required')+
 select('Frequência','frequency',['Mensal','Anual'],a.frequency||'Mensal')+'</div>'+
 select('Pagamento','method',['Pix','Débito','Crédito','Dinheiro','Boleto','Transferência'],a.method||'Débito')+
-select('Conta ou cartão (opcional)','paymentSource',['',...db.accounts.map(x=>'conta:'+x.id),...db.cards.map(x=>'cartao:'+x.id)],a.paymentSource||'')+
+'<label class="v2-field">Conta ou cartão (opcional)<select name="paymentSource"><option value="">Nenhum vínculo</option>'+db.accounts.map(x=>'<option value="conta:'+esc(x.id)+'" '+(a.paymentSource==='conta:'+x.id?'selected':'')+'>'+esc('Conta · '+(x.nickname||x.bank))+'</option>').join('')+db.cards.map(x=>'<option value="cartao:'+esc(x.id)+'" '+(a.paymentSource==='cartao:'+x.id?'selected':'')+'>'+esc('Cartão · '+(x.nickname||x.name))+'</option>').join('')+'</select></label>'+
 '<div class="v2-two">'+field('Data de início','start',a.start||month+'-01','date','required')+
 field('Data de término (opcional)','end',a.end||'','date')+'</div>'+
 field('Total de parcelas (opcional)','termCount',a.termCount||'','number','min="1" max="600"')+
@@ -334,9 +336,11 @@ for(let i=0;i<count;i++){const each=(baseCents+(i===count-1?cents-baseCents*coun
 db.items.push({...base,id:uid(),amount:each,date:monthDate(addMonth(first,i),Number(card?.due)||15),
 purchaseDate:date,installmentGroup:group,installmentNo:i+1,installmentCount:count,status:i?'previsto':status})}
 }else{
-db.items.push({...base,id:old?.id||uid(),amount,installmentGroup:null,installmentNo:null,installmentCount:null});
+ const card=db.cards.find(x=>x.id===cardId);
+ const billDate=payment==='Crédito'?monthDate(creditFirstMonth(date,card),Number(card?.due)||15):date;
+ db.items.push({...base,id:old?.id||uid(),amount,date:billDate,purchaseDate:payment==='Crédito'?date:null,installmentGroup:null,installmentNo:null,installmentCount:null});
 }
-editItem=null;month=ym(date);write();go('lancamentos');
+editItem=null;month=payment==='Crédito'?creditFirstMonth(date,db.cards.find(x=>x.id===cardId)):ym(date);write();go('lancamentos');
 }
 document.addEventListener('click',e=>{
 const t=e.target.closest('[data-page]');if(t){page=t.dataset.page;section=page==='configuracoes'?'cartoes':page==='planejamento'?'fixas':section;go(page);return}
@@ -369,7 +373,7 @@ db.cards=editCard?db.cards.map(x=>x.id===id?{...x,...card}:x):[...db.cards,card]
 closeModal();write();return;
 }
 if(f.id==='v2-account-form'){
-const account={id:editAccount||uid(),bank:String(v.get('bank')),type:String(v.get('type')),nickname:String(v.get('nickname')||'')};
+const account={id:editAccount||uid(),bank:String(v.get('bank')||'').trim(),type:String(v.get('type')),nickname:String(v.get('nickname')||'')};if(!account.bank)return alert('Informe o banco.');
 db.accounts=editAccount?db.accounts.map(x=>x.id===editAccount?account:x):[...db.accounts,account];closeModal();write();return;
 }
 if(f.id==='v2-fixed-form'){
