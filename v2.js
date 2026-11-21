@@ -52,7 +52,10 @@ headerAction.innerHTML=onSettings?'Sair da conta':'＋ <span>Novo lançamento</s
 }
 HDR.querySelector('.brand small')?.remove();
 }
-function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
+function monthBar(){
+const chevron=direction=>'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="'+(direction==='left'?'m15 18-6-6 6-6':'m9 18 6-6-6-6')+'"/></svg>';
+return '<div class="v2-month"><button type="button" data-action="prevMonth" aria-label="Mês anterior">'+chevron('left')+'</button><strong>'+monthTitle(month)+'</strong><button type="button" data-action="nextMonth" aria-label="Próximo mês">'+chevron('right')+'</button></div>';
+}
 function bankName(name){const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const n=normalize(name);return BANKS.find(x=>x!=='Outro'&&n.includes(normalize(x)))||(n.startsWith('bb ')||n==='bb'?'Banco do Brasil':n.includes('rchlo')?'Riachuelo':'Instituição')}
 function logo(name, context='card'){
 const brand=bankName(name);
@@ -150,7 +153,7 @@ return '<section class="v2-forecast v2-panel" aria-label="Previsões do mês">'+
 '<div class="v2-panel-top"><div><h2>Previsto para '+monthTitle(month)+'</h2><p class="v2-sub">Valores pendentes, ainda não realizados</p></div>'+pill(entries.length+' '+(entries.length===1?'compromisso':'registros'))+'</div>'+
 '<div class="v2-forecast-grid">'+
 [['Receitas a receber',a.incomePending,'income'],['Despesas variáveis previstas',a.variablePending,'expense'],['Despesas fixas a pagar',a.fixedPending,'expense'],['Saldo das previsões pendentes',forecastNet,'balance']].map(([label,value,kind])=>
-'<div class="v2-forecast-kpi"><small>'+label+'</small><strong>'+CM(value)+'</strong>'+(kind==='balance'?'<span>Inclui aportes e resgates previstos</span>':'')+'</div>').join('')+
+'<div class="v2-forecast-kpi'+(kind==='balance'&&value<0?' v2-balance-negative':'')+'"><small>'+label+'</small><strong>'+CM(value)+'</strong>'+(kind==='balance'?'<span>Inclui aportes e resgates previstos</span>':'')+'</div>').join('')+
 '</div>'+
 '<div class="v2-forecast-explainer"><span>Já realizado: <b>'+CM(a.net)+'</b></span><span>Movimentos pendentes: <b>'+CM(forecastNet)+'</b></span><span>Saldo projetado: <b>'+CM(a.projected)+'</b></span></div>'+
 '<div class="v2-panel-top v2-forecast-list-title"><h3>Próximos lançamentos previstos</h3>'+action('Ver lançamentos','transactions',true)+'</div>'+
@@ -162,7 +165,7 @@ function home(){
 const a=monthly(),invest=investmentTotals(),categories={};
 a.its.filter(spent).forEach(x=>{const k=x.category||'Outros';categories[k]=(categories[k]||0)+Number(x.amount||0)});
 return banner('Visão geral','Seu controle financeiro pessoal e familiar')+monthBar()+
-'<div class="v2-overview"><div class="v2-hero"><small>Saldo realizado do mês</small><strong>'+CM(a.net)+'</strong><span>Projeção para o mês '+CM(a.projected)+'</span></div>'+
+'<div class="v2-overview"><div class="v2-hero'+(a.net<0?' v2-balance-negative':'')+'"><small>Saldo realizado do mês</small><strong>'+CM(a.net)+'</strong><span>Projeção para o mês '+CM(a.projected)+'</span></div>'+
 [['Receitas recebidas',a.inc],['Despesas variáveis realizadas',a.out],['Despesas fixas pagas',a.fixedActual],['Patrimônio investido',invest.total]].map(([t,v])=>'<div class="v2-kpi"><small>'+t+'</small><strong>'+CM(v)+'</strong></div>').join('')+'</div>'+
 forecastPanel(a)+
 '<div class="v2-columns"><section class="v2-panel"><div class="v2-panel-top"><h2>Despesas por categoria</h2>'+pill(monthTitle(month))+'</div>'+
