@@ -41,7 +41,7 @@ else localStorage.setItem(KEY,JSON.stringify(db));
 render();
 }
 function titleNav(){
-NAV.innerHTML=[['inicio','⌂','Início'],['lancamentos','☷','Lançamentos'],['cartoes','▤','Cartões'],['investimentos','◇','Investimentos'],['planejamento','▦','Planejamento'],['configuracoes','⚙','Configurações']].map(n=>'<button class="tab '+(page===n[0]?'active':'')+'" data-page="'+n[0]+'"><span class="ico">'+n[1]+'</span><span>'+n[2]+'</span></button>').join('');
+NAV.innerHTML=[['inicio','⌂','Início','Início'],['lancamentos','☷','Lançamentos','Lanç.'],['cartoes','▤','Cartões','Cartões'],['investimentos','◇','Investimentos','Invest.'],['planejamento','▦','Planejamento','Plan.'],['configuracoes','⚙','Configurações','Ajustes']].map(n=>'<button class="tab '+(page===n[0]?'active':'')+'" data-page="'+n[0]+'"><span class="ico">'+n[1]+'</span><span data-short="'+n[3]+'">'+n[2]+'</span></button>').join('');
 if(!HDR.querySelector('[data-action="new"]'))HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span><small>V2</small></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
@@ -102,7 +102,7 @@ return banner('Visão geral','Seu controle financeiro pessoal e familiar')+month
 '<div class="v2-columns"><section class="v2-panel"><div class="v2-panel-top"><h2>Despesas por categoria</h2>'+pill(monthTitle(month))+'</div>'+
 (Object.entries(categories).length?Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([key,value])=>'<div class="v2-metric"><span>'+esc(key)+'</span><b>'+CM(value)+'</b></div>').join(''):'<p class="v2-empty">Ainda não há despesas variáveis registradas.</p>')+'</section>'+
 '<section class="v2-panel"><div class="v2-panel-top"><h2>Próximos compromissos fixos</h2>'+action('Ver planejamento','planning',true)+'</div>'+
-(a.fixed.length?a.fixed.slice(0,6).map(f=>'<div class="v2-metric"><span>'+esc(f.description)+' · Dia '+esc(f.source.due)+(f.paid?' · Pago':' · Previsto')+'</span><b>'+CM(f.amount)+'</b></div>').join(''):'<p class="v2-empty">Nenhuma despesa fixa cadastrada.</p>')+'</section></div>';
+(a.fixed.length?a.fixed.slice(0,6).map(f=>'<div class="v2-metric"><span>'+esc(f.description)+' · Dia '+esc(f.source.due)+(f.paid?' · Pago':f.date<today()?' · Atrasado':' · Previsto')+'</span><b>'+CM(f.amount)+'</b></div>').join(''):'<p class="v2-empty">Nenhuma despesa fixa cadastrada.</p>')+'</section></div>';
 }
 function itemLabel(x){return x.type==='receita'?(x.origin||x.description):(x.description||'Sem descrição')}
 function itemRow(x){
@@ -134,7 +134,7 @@ const paymentFields=isExpense?
  select('Tipo de compra','creditType',['À vista','Parcelado'],creditType==='parcelado'?'Parcelado':'À vista')+
  (creditType==='parcelado'?select('Parcelas','installments',Array.from({length:23},(_,i)=>String(i+2)),String(x.installmentCount||2)):''):'')+
  (payment==='Pix'||payment==='Débito'?'<label class="v2-field">Conta<select name="accountId" required>'+accountOptions.map(v=>'<option value="'+esc(v[0])+'" '+(x.accountId===v[0]?'selected':'')+'>'+esc(v[1])+'</option>').join('')+'</select>'+(accountOptions.length?'':'<small>Cadastre uma conta em Configurações.</small>')+'</label>':''):'';
-const categories=isIncome?INCOME_CATS:isExpense?EXPENSE_CATS:['Aplicação','Resgate','Rendimento'];
+const categories=[...(isIncome?INCOME_CATS:isExpense?EXPENSE_CATS:['Aplicação','Resgate','Rendimento'])];if(x.category&&!categories.includes(x.category))categories.unshift(x.category);
 const descriptionLabel=isIncome?'Origem':isExpense?'Estabelecimento / Serviço':'Investimento / Instituição';
 return banner(editItem?'Editar lançamento':'Novo lançamento','Registre suas movimentações financeiras')+
 '<div class="v2-segments">'+[['despesa','Despesa'],['receita','Receita'],['investimento','Investimento']].map(v=>'<button class="'+(mode===v[0]?'selected':'')+'" data-mode="'+v[0]+'">'+v[1]+'</button>').join('')+'</div>'+
@@ -220,7 +220,7 @@ return banner('Planejamento','Orçamento e despesas fixas')+monthBar()+
 (section==='orcamento'?'<div class="v2-panel"><h2>Meta mensal</h2><form id="v2-budget">'+field('Limite de despesas (R$)','amount',db.budgets[month]??'','number','min="0" step="0.01" required')+'<button class="v2-primary">Salvar orçamento</button></form><p class="v2-help">A meta e a projeção são atualizadas com suas despesas variáveis e compromissos fixos.</p></div>':
 '<div class="v2-toolbar">'+action('＋ Adicionar despesa fixa','newFixed')+'</div>'+
 '<div class="v2-panel"><h2>Compromissos de '+monthTitle(month)+'</h2>'+
-(list.map(f=>'<div class="v2-item"><div class="v2-item-main"><strong>'+esc(f.description)+'</strong><small>'+esc(f.category)+' · Dia '+esc(f.source.due)+(f.source.termCount?' · Parcela '+f.paymentNumber+'/'+f.source.termCount:'')+' · '+(f.paid?'Pago':'Previsto')+'</small></div><b>'+CM(f.amount)+'</b><button class="v2-secondary" data-action="payFixed:'+f.id+'">'+(f.paid?'Revisar':'Pagar')+'</button></div>').join('')||'<p class="v2-empty">Sem compromissos fixos neste mês.</p>')+'</div>'+
+(list.map(f=>'<div class="v2-item"><div class="v2-item-main"><strong>'+esc(f.description)+'</strong><small>'+esc(f.category)+' · Dia '+esc(f.source.due)+(f.source.termCount?' · Parcela '+f.paymentNumber+'/'+f.source.termCount:'')+' · '+(f.paid?'Pago':f.date<today()?'Atrasado':'Previsto')+'</small></div><b>'+CM(f.amount)+'</b><button class="v2-secondary" data-action="payFixed:'+f.id+'">'+(f.paid?'Revisar':'Pagar')+'</button></div>').join('')||'<p class="v2-empty">Sem compromissos fixos neste mês.</p>')+'</div>'+
 '<div class="v2-panel"><h2>Despesas cadastradas</h2>'+db.fixed.map(x=>'<div class="v2-item"><div class="v2-item-main"><strong>'+esc(x.name)+'</strong><small>'+esc(x.category)+' · '+(x.active?'Ativa':'Suspensa')+'</small></div><b>'+CM(x.amount)+'</b><button data-action="editFixed:'+x.id+'" class="v2-secondary">Editar</button></div>').join('')+'</div>');
 }
 function settings(){
