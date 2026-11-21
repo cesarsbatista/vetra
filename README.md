@@ -11,6 +11,7 @@ Aplicativo de controle financeiro pessoal e familiar com acesso por e-mail, cód
 - Banco de dados PostgreSQL no Supabase, protegido por políticas RLS por participação no orçamento.
 - Sincronização entre dispositivos via Supabase Realtime, com controle de revisão contra sobrescrita simultânea.
 - Painel mensal, despesas e receitas previstas/realizadas, investimentos, cartões e planejamento.
+- Cartões completos: nome, titular, apelido, bandeira, cor personalizada, quatro últimos dígitos opcionais, dias de fechamento/vencimento, cartão principal, ordem de exibição e miniatura ilustrativa responsiva. Cartões com lançamentos vinculados não podem ser excluídos.
 - Categorias originais da planilha de controle financeiro.
 - Exportação CSV, backup JSON e importação explícita de lançamentos locais antigos.
 - Interface móvel com navegação inferior e interface desktop com menu lateral e área de trabalho ampliada.
