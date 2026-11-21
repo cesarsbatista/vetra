@@ -31,3 +31,50 @@
 }
 @media(min-width:1300px){.app{padding-left:70px;padding-right:70px}}
 @media(max-width:899px){.tabs{max-width:none}.app{max-width:620px;margin:auto}.family-dialog{padding:27px 20px}.vetra-sync-status{margin-bottom:15px}}
+
+
+/* VETRA V1.4 — cartões detalhados e miniaturas ilustrativas */
+.vetra-card-toolbar{display:flex;align-items:center;gap:16px;margin:0 0 30px;flex-wrap:wrap}
+.vetra-card-toolbar .primary{width:auto;margin:0;padding:14px 21px}
+.vetra-card-editor{margin-bottom:28px}
+.vetra-card-editor-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(250px,.8fr);gap:30px;align-items:start}
+.vetra-card-editor .fieldgrid input{min-width:0}
+.vetra-card-editor-buttons{display:flex;gap:12px;align-items:stretch;margin-top:20px}
+.vetra-card-editor-buttons .primary{width:auto;min-width:240px;flex:1;margin:0}
+.vetra-card-editor-buttons .secondary{min-width:145px}
+.vetra-primary-toggle{display:flex;gap:10px;align-items:center;font-size:13px;color:#4f6757;padding:5px 0 12px}
+.vetra-primary-toggle input{width:17px;height:17px;accent-color:#718e7d}
+.vetra-card-editor-preview{position:sticky;top:20px}
+.vetra-card-panel{padding:22px 24px;margin-bottom:18px}
+.vetra-card-detail{display:grid;grid-template-columns:minmax(230px,330px) minmax(0,1fr);gap:27px;align-items:center}
+.vetra-card-title-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.vetra-card-title-line h2{margin:0;font-size:17px}
+.vetra-card-info .small{margin:8px 0}
+.vetra-card-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:14px 0}
+.vetra-card-actions .secondary{padding:10px 13px;font-size:12px}
+.vetra-card-order{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vetra-card-order button{padding:6px 14px;min-width:38px}
+.vetra-card-order button:disabled{opacity:.38;cursor:not-allowed}
+.vetra-card-purchases{border-top:1px solid #e5eae5;margin-top:21px;padding-top:16px}
+.vetra-card-purchases h3{font-size:13px;color:#586b5f;margin:0}
+.vetra-plastic{aspect-ratio:1.586;min-width:0;width:100%;max-width:360px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:21px 22px;border-radius:18px;color:#fff;text-shadow:0 1px 3px #0004;box-shadow:0 13px 30px #14251b27;background:linear-gradient(125deg,#789489,#47675a)}
+.vetra-plastic:before{content:"";position:absolute;border:1px solid #ffffff28;width:95%;aspect-ratio:1;border-radius:50%;right:-43%;top:-90%;pointer-events:none}
+.vetra-plastic:after{content:"";position:absolute;inset:0;background:linear-gradient(140deg,#fff2,transparent 48%,#0002);pointer-events:none}
+.vetra-plastic--graphite{background:linear-gradient(125deg,#555e63,#272e33)}
+.vetra-plastic--navy{background:linear-gradient(125deg,#345675,#14263d)}
+.vetra-plastic--black{background:linear-gradient(125deg,#373a3b,#0b0e10)}
+.vetra-plastic--silver{background:linear-gradient(125deg,#afb9b8,#687a78)}
+.vetra-plastic--wine{background:linear-gradient(125deg,#965a68,#572f47)}
+.vetra-plastic--sand{background:linear-gradient(125deg,#b59d7d,#796148)}
+.vetra-plastic--violet{background:linear-gradient(125deg,#8d7ba7,#503f75)}
+.vetra-plastic-top,.vetra-plastic-bottom{display:flex;align-items:start;justify-content:space-between;gap:12px;z-index:1}
+.vetra-plastic-bank{font-size:13px;font-weight:620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78%}
+.vetra-plastic-chip{width:32px;height:25px;border-radius:6px;background:linear-gradient(145deg,#f9ebc7,#c6b58e);opacity:.9;flex:0 0 auto;box-shadow:inset 0 0 0 1px #7e735840}
+.vetra-plastic-middle{font-size:17px;letter-spacing:3px;font-weight:600;z-index:1}
+.vetra-plastic-label{display:block;font-size:8px;letter-spacing:.15em;opacity:.8;margin-bottom:4px}
+.vetra-plastic-bottom strong{font-size:11px;display:block;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:165px}
+.vetra-plastic-brand{font-size:12px;font-weight:750;letter-spacing:.01em;text-align:right;max-width:110px;align-self:end}
+.vetra-plastic-bottom>div{min-width:0}
+@media(max-width:1150px){.vetra-card-detail{grid-template-columns:minmax(185px,280px) minmax(0,1fr);gap:19px}.vetra-card-editor-layout{grid-template-columns:1fr}}
+@media(max-width:700px){.vetra-card-toolbar{margin-bottom:26px}.vetra-card-toolbar .primary{width:100%}.vetra-card-detail{grid-template-columns:1fr;gap:20px}.vetra-card-panel{padding:18px}.vetra-card-editor-layout{grid-template-columns:1fr}.vetra-card-editor-preview{position:static}.vetra-plastic{margin:0 auto;max-width:340px}.vetra-card-editor-buttons{flex-direction:column}.vetra-card-editor-buttons .primary,.vetra-card-editor-buttons .secondary{width:100%;min-width:0}.vetra-card-editor .fieldgrid{grid-template-columns:1fr 1fr;gap:9px}}
+@media(max-width:380px){.vetra-card-editor .fieldgrid{grid-template-columns:1fr}.vetra-plastic{padding:18px}}
