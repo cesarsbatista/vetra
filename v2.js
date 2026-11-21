@@ -389,9 +389,16 @@ field('Data do pagamento','date',paid.date||today(),'date')+
 function download(name,text,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function csvExport(){const headers=['Data','Tipo','Origem/Estabelecimento','Categoria','Valor','Pagamento','Cartão','Conta','Situação'];const lines=db.items.map(x=>[x.date,x.type,itemLabel(x),x.category,x.amount,x.payment||'',db.cards.find(y=>y.id===x.cardId)?.name||'',db.accounts.find(y=>y.id===x.accountId)?.bank||'',x.status]);download('vetra-v2-lancamentos.csv','\uFEFF'+[headers,...lines].map(a=>a.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv;charset=utf-8')}
 function render(){
+ // Keep header controls alive across page renders; the OTP sign-out handler
+ // remains bound to #profile while the visible action joins the page heading.
+ const previousAction=document.querySelector('.v2-header-add');
+ if(previousAction&&previousAction.parentElement!==HDR)HDR.insertBefore(previousAction,HDR.querySelector('#profile'));
  titleNav();
  const pageHtml={inicio:home,lancamentos:transactions,cartoes:cardPurchases,investimentos:investmentsPage,planejamento:fixedPage,configuracoes:settings,novo:newForm};
  ROOT.innerHTML=(pageHtml[page]||home)();
+ const heading=ROOT.querySelector('.v2-heading');
+ const action=HDR.querySelector('.v2-header-add');
+ if(heading&&action)heading.appendChild(action);
 }
 function go(p){page=p;render();window.scrollTo({top:0,behavior:'instant'})}
 function setupEntry(){
