@@ -81,9 +81,10 @@ if(s<ym(f.start||s)||(f.end&&s>ym(f.end)))return null;
 const interval=f.frequency==='Anual'?12:1;
 const start=ym(f.start||s),a=start.split('-').map(Number),b=s.split('-').map(Number);
 if((b[0]-a[0])*12+b[1]-a[1]<0||((b[0]-a[0])*12+b[1]-a[1])%interval!==0)return null;
-if(f.termCount&&((b[0]-a[0])*12+b[1]-a[1])/interval>=Number(f.termCount))return null;
+if(f.termCount&&((b[0]-a[0])*12+b[1]-a[1])/interval+Number(f.currentInstallment||1)>Number(f.termCount))return null;
 const paid=f.payments?.[s];
-return {id:f.id,description:f.name,amount:Number(paid?.amount??f.amount),date:monthDate(s,Number(f.due)||1),category:f.category,paid:!!paid?.paid,realDate:paid?.date||'',method:f.method,source:f};
+const paymentNumber=((b[0]-a[0])*12+b[1]-a[1])/interval+Number(f.currentInstallment||1);
+return {paymentNumber,id:f.id,description:f.name,amount:Number(paid?.amount??f.amount),date:monthDate(s,Number(f.due)||1),category:f.category,paid:!!paid?.paid,realDate:paid?.date||'',method:f.method,source:f};
 }
 const fixedForMonth=s=>db.fixed.map(f=>fixedOccurrence(f,s)).filter(Boolean);
 function monthly(){
@@ -138,7 +139,7 @@ const descriptionLabel=isIncome?'Origem':isExpense?'Estabelecimento / Serviço':
 return banner(editItem?'Editar lançamento':'Novo lançamento','Registre suas movimentações financeiras')+
 '<div class="v2-segments">'+[['despesa','Despesa'],['receita','Receita'],['investimento','Investimento']].map(v=>'<button class="'+(mode===v[0]?'selected':'')+'" data-mode="'+v[0]+'">'+v[1]+'</button>').join('')+'</div>'+
 '<form id="v2-entry" class="v2-panel v2-form">'+paymentFields+
-field('Valor total (R$)','amount',x.installmentGroup&&x.installmentCount?Number(x.amount)*Number(x.installmentCount):x.amount??'','number','min="0.01" step="0.01" required')+
+field('Valor total (R$)','amount',x.installmentGroup&&x.installmentCount?db.items.filter(i=>i.installmentGroup===x.installmentGroup).reduce((v,i)=>v+Number(i.amount),0):x.amount??'','number','min="0.01" step="0.01" required')+
 field(descriptionLabel,'description',x.origin||x.description||'','text','required maxlength="100"')+
 select('Categoria','category',categories,categories.includes(x.category)?x.category:categories[0])+
 '<div class="v2-two">'+field('Data','date',x.purchaseDate||x.date||today(),'date','required')+select('Situação','status',['realizado','previsto'],x.status||'realizado')+'</div>'+
@@ -204,7 +205,7 @@ return banner('Planejamento','Orçamento e despesas fixas')+monthBar()+
 (section==='orcamento'?'<div class="v2-panel"><h2>Meta mensal</h2><form id="v2-budget">'+field('Limite de despesas (R$)','amount',db.budgets[month]??'','number','min="0" step="0.01" required')+'<button class="v2-primary">Salvar orçamento</button></form><p class="v2-help">A meta e a projeção são atualizadas com suas despesas variáveis e compromissos fixos.</p></div>':
 '<div class="v2-toolbar">'+action('＋ Adicionar despesa fixa','newFixed')+'</div>'+
 '<div class="v2-panel"><h2>Compromissos de '+monthTitle(month)+'</h2>'+
-(list.map(f=>'<div class="v2-item"><div class="v2-item-main"><strong>'+esc(f.description)+'</strong><small>'+esc(f.category)+' · Dia '+esc(f.source.due)+' · '+(f.paid?'Pago':'Previsto')+'</small></div><b>'+CM(f.amount)+'</b><button class="v2-secondary" data-action="payFixed:'+f.id+'">'+(f.paid?'Revisar':'Pagar')+'</button></div>').join('')||'<p class="v2-empty">Sem compromissos fixos neste mês.</p>')+'</div>'+
+(list.map(f=>'<div class="v2-item"><div class="v2-item-main"><strong>'+esc(f.description)+'</strong><small>'+esc(f.category)+' · Dia '+esc(f.source.due)+(f.source.termCount?' · Parcela '+f.paymentNumber+'/'+f.source.termCount:'')+' · '+(f.paid?'Pago':'Previsto')+'</small></div><b>'+CM(f.amount)+'</b><button class="v2-secondary" data-action="payFixed:'+f.id+'">'+(f.paid?'Revisar':'Pagar')+'</button></div>').join('')||'<p class="v2-empty">Sem compromissos fixos neste mês.</p>')+'</div>'+
 '<div class="v2-panel"><h2>Despesas cadastradas</h2>'+db.fixed.map(x=>'<div class="v2-item"><div class="v2-item-main"><strong>'+esc(x.name)+'</strong><small>'+esc(x.category)+' · '+(x.active?'Ativa':'Suspensa')+'</small></div><b>'+CM(x.amount)+'</b><button data-action="editFixed:'+x.id+'" class="v2-secondary">Editar</button></div>').join('')+'</div>');
 }
 function settings(){
@@ -253,7 +254,7 @@ select('Pagamento','method',['Pix','Débito','Crédito','Dinheiro','Boleto','Tra
 '<label class="v2-field">Conta ou cartão (opcional)<select name="paymentSource"><option value="">Nenhum vínculo</option>'+db.accounts.map(x=>'<option value="conta:'+esc(x.id)+'" '+(a.paymentSource==='conta:'+x.id?'selected':'')+'>'+esc('Conta · '+(x.nickname||x.bank))+'</option>').join('')+db.cards.map(x=>'<option value="cartao:'+esc(x.id)+'" '+(a.paymentSource==='cartao:'+x.id?'selected':'')+'>'+esc('Cartão · '+(x.nickname||x.name))+'</option>').join('')+'</select></label>'+
 '<div class="v2-two">'+field('Data de início','start',a.start||month+'-01','date','required')+
 field('Data de término (opcional)','end',a.end||'','date')+'</div>'+
-field('Total de parcelas (opcional)','termCount',a.termCount||'','number','min="1" max="600"')+
+'<div class="v2-two">'+field('Total de parcelas (opcional)','termCount',a.termCount||'','number','min="1" max="600"')+field('Parcela atual no início','currentInstallment',a.currentInstallment||1,'number','min="1" max="600"')+'</div>'+
 '<label class="v2-check"><input type="checkbox" name="active" '+(a.active!==false?'checked':'')+'> Despesa ativa</label>'+
 '<div class="v2-buttons"><button class="v2-primary">Salvar despesa fixa</button>'+(id?'<button type="button" class="v2-secondary v2-danger" data-action="removeFixed:'+id+'">Excluir</button>':'')+'</div></form>');
 }
@@ -393,7 +394,7 @@ if(f.id==='v2-fixed-form'){
 const name=String(v.get('name')||'').trim(),amount=Number(v.get('amount')),due=Number(v.get('due'));
 if(!name||!Number.isFinite(amount)||amount<0||!Number.isInteger(due)||due<1||due>31)return alert('Informe descrição, valor e vencimento válidos.');
 const old=db.fixed.find(x=>x.id===editFixed)||{};
-const data={...old,id:editFixed||uid(),name,amount,due,category:String(v.get('category')),frequency:String(v.get('frequency')),method:String(v.get('method')),paymentSource:String(v.get('paymentSource')||''),start:String(v.get('start')),end:String(v.get('end')||''),termCount:Math.max(0,Number(v.get('termCount')||0)),active:v.has('active'),payments:old.payments||{}};
+const data={...old,id:editFixed||uid(),name,amount,due,category:String(v.get('category')),frequency:String(v.get('frequency')),method:String(v.get('method')),paymentSource:String(v.get('paymentSource')||''),start:String(v.get('start')),end:String(v.get('end')||''),termCount:Math.max(0,Number(v.get('termCount')||0)),currentInstallment:Math.max(1,Number(v.get('currentInstallment')||1)),active:v.has('active'),payments:old.payments||{}};
 db.fixed=editFixed?db.fixed.map(x=>x.id===editFixed?data:x):[...db.fixed,data];closeModal();write();return;
 }
 if(f.id==='v2-invest-form'){
