@@ -180,3 +180,6 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 .v2-collapsible[open] .v2-collapse-arrow{transform:rotate(180deg)}
 .v2-collapsible-body{border-top:1px solid #eee;padding:8px 22px 16px}
 @media(max-width:450px){.v2-collapsible>summary{padding:17px}.v2-collapsible-body{padding:6px 17px 14px}}
+
+/* Cabeçalho sem marca duplicada: somente a ação à direita */
+.app header .v2-header-add{margin-left:auto}
