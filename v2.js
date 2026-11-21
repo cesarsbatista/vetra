@@ -241,8 +241,20 @@ return banner('Cartões','Compras, parcelas e faturas')+monthBar()+
 '<div class="v2-overview"><div class="v2-kpi"><small>Compras do mês</small><strong>'+CM(sum(list))+'</strong></div><div class="v2-kpi"><small>Cartões ativos</small><strong>'+db.cards.length+'</strong></div></div>'+
 db.cards.map(card=>{
 const purchases=list.filter(x=>x.cardId===card.id);
+const nubankStatement=card.id==='nubank-ana'?(db.settings?.nubankStatements2026||[]).find(x=>x.month===month):null;
+const nubankDetails=card.id!=='nubank-ana'?'':(
+ nubankStatement?
+ '<div class="v2-invoice-proof"><div class="v2-invoice-proof-title"><strong>Conciliação da fatura Nubank</strong><span>'+esc(nubankStatement.status==='quitada'?'Pagamento confirmado':nubankStatement.status==='pagamento_parcial'?'Pagamento parcial':'Pagamento não confirmado')+'</span></div>'+
+ '<div class="v2-invoice-proof-grid"><div><small>Total oficial da fatura</small><b>'+CM(nubankStatement.amount)+'</b></div>'+
+ '<div><small>Gastos reconhecidos no mês</small><b>'+CM(nubankStatement.recognizedExpenses)+'</b></div>'+
+ '<div><small>Pagamento comprovado</small><b>'+(nubankStatement.paid===null?'Não informado':CM(nubankStatement.paid))+'</b></div>'+
+ (nubankStatement.carriedDebt?'<div><small>Saldo anterior transportado (sem duplicação)</small><b>'+CM(nubankStatement.carriedDebt)+'</b></div>':'')+
+ '</div><p>Valor da fatura e pagamentos são acompanhados separadamente. O status de cada compra não significa que a fatura foi quitada.</p></div>'
+ :month==='2026-05'?
+ '<div class="v2-invoice-proof"><div class="v2-invoice-proof-title"><strong>Nubank · Maio de 2026</strong><span>Conferência pendente</span></div><p>Valor de R$ 680,92 informado na planilha GASTOS. A fatura PDF não foi fornecida; compras e pagamento ainda não foram verificados.</p></div>'
+ :'');
 return '<section class="v2-panel"><div class="v2-panel-top"><h2>'+esc(card.nickname||card.name)+'</h2>'+pill(CM(sum(purchases)))+'</div>'+
-'<div class="v2-statement"><p class="v2-sub">Fatura de '+monthTitle(month)+' · Vencimento dia '+esc(card.due)+'</p>'+(purchases.length?'<button type="button" class="v2-secondary" data-action="payCard:'+esc(card.id)+'">'+(purchases.every(x=>x.status==='realizado')?'Reabrir fatura':'Marcar fatura paga')+'</button>':'')+'</div>'+
+'<div class="v2-statement"><p class="v2-sub">Fatura de '+monthTitle(month)+' · Vencimento dia '+esc(card.due)+'</p>'+(purchases.length&&card.id!=='nubank-ana'?'<button type="button" class="v2-secondary" data-action="payCard:'+esc(card.id)+'">'+(purchases.every(x=>x.status==='realizado')?'Reabrir fatura':'Marcar fatura paga')+'</button>':'')+'</div>'+nubankDetails+
 (purchases.length?purchases.map(itemRow).join(''):'<p class="v2-empty">Sem compras nessa fatura.</p>')+'</section>'
 }).join('')+
 (!db.cards.length?'<div class="v2-panel v2-empty">Cadastre cartões em Configurações para acompanhar compras.</div>':'');
