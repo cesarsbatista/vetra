@@ -3,7 +3,7 @@ const cfg=window.VETRA_SUPABASE||{};
 const status=document.createElement('div');status.id='vetra-sync-status';status.className='vetra-sync-status';status.hidden=true;
 document.querySelector('.app')?.prepend(status);
 const panel=document.createElement('div');panel.id='vetra-family-setup';panel.className='vetra-family-setup';panel.hidden=true;document.body.append(panel);
-let sb=null,user=null,house=null,rev=null,channel=null,saveChain=Promise.resolve(),pending=0,conflict=false,loading=false;
+let sb=null,user=null,house=null,rev=null,channel=null,saveChain=Promise.resolve(),pending=0,conflict=false,loading=false,refreshAfterSave=false;
 const savedLocalKey='vetra:v1',backupKey=id=>'vetra:v1:precloud:'+id;
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cleanPayload=p=>({items:Array.isArray(p?.items)?p.items:[],cards:Array.isArray(p?.cards)?p.cards:[],budgets:p?.budgets&&typeof p.budgets==='object'?p.budgets:{},settings:p?.settings&&typeof p.settings==='object'?p.settings:{}});
@@ -75,7 +75,7 @@ function listen(){
  if(channel)sb.removeChannel(channel);
  channel=sb.channel('vetra-finance-'+house.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'vetra_finances',filter:'household_id=eq.'+house.id},e=>{
   if(e.new?.updated_by===user.id)return;
-  if(pending||conflict){notify('Há mudanças de outro participante; conclua a sincronização antes de atualizar.','warn');return}
+  if(pending||conflict){refreshAfterSave=true;notify('Outra pessoa fez alterações. Atualização pendente até terminar a sincronização.','warn');return}
   loadCloud().catch(er=>notify(er.message,'error'));
  }).subscribe();
 }
@@ -92,7 +92,7 @@ function queueSave(db){
   rev=data;
  }).catch(err=>{notify('Não foi possível sincronizar. Dados mantidos neste navegador. Faça backup JSON antes de atualizar. '+err.message,'error')}).finally(()=>{
   pending=Math.max(0,pending-1);
-  if(!pending&&!conflict)notify('Alterações salvas na nuvem.','ok');
+  if(!pending&&!conflict){notify('Alterações salvas na nuvem.','ok');if(refreshAfterSave){refreshAfterSave=false;loadCloud().catch(e=>notify(e.message,'error'));}}
  });
 }
 async function connect(client,session){
@@ -105,7 +105,7 @@ async function connect(client,session){
 }
 function disconnect(){
  if(channel&&sb)sb.removeChannel(channel);
- channel=null;house=null;user=null;rev=null;pending=0;conflict=false;
+ channel=null;house=null;user=null;rev=null;pending=0;conflict=false;refreshAfterSave=false;
  hideSetup();clearStatus();
  const original=localStorage.getItem(savedLocalKey);
  if(original){try{window.VETRA_APP?.replace(cleanPayload(JSON.parse(original)),false)}catch(e){}}
