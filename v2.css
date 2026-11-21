@@ -268,3 +268,18 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 .v2-forecast-kpi:last-child.v2-balance-negative span{
   color:#222222!important;
 }
+
+/* Historical invoice reconciliation: unobtrusive, compact and readable */
+.v2-invoice-proof{
+  border:1px solid #E5E5E5;background:#FAFAFA;border-radius:14px;
+  padding:15px 17px;margin:10px 0 14px;color:#222222;
+}
+.v2-invoice-proof-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:13px}
+.v2-invoice-proof-title strong{font-size:14px;font-weight:690}
+.v2-invoice-proof-title span{background:#ECECEC;border-radius:99px;padding:5px 9px;font-size:11px;font-weight:600;letter-spacing:0}
+.v2-invoice-proof-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 20px}
+.v2-invoice-proof-grid>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.v2-invoice-proof-grid small{font-size:11px;color:#696969}
+.v2-invoice-proof-grid b{font-size:15px;font-weight:710;color:#222222}
+.v2-invoice-proof p{font-size:12px;line-height:1.5;color:#686868;margin:12px 0 0}
+@media(max-width:450px){.v2-invoice-proof{padding:12px}.v2-invoice-proof-grid{grid-template-columns:1fr 1fr;gap:10px}.v2-invoice-proof-grid b{font-size:14px}}
