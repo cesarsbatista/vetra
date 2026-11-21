@@ -190,3 +190,20 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 .v2-heading>div{min-width:0}
 .v2-heading .v2-header-add{margin-left:auto;flex:0 0 auto}
 @media(max-width:450px){.v2-heading{gap:10px;align-items:flex-start}.v2-heading h1{font-size:24px}.v2-heading .v2-header-add{align-self:center}}
+
+/* Refined forecast indicators: centered symbols and restrained semantic colors */
+.v2-forecast-sign{
+  width:34px;height:34px;min-width:34px;min-height:34px;
+  flex:0 0 34px;box-sizing:border-box;
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:0;margin:0;border-radius:11px;
+  font-size:17px;font-weight:650;line-height:1;letter-spacing:0;
+  font-variant-numeric:tabular-nums;
+  text-align:center;
+}
+.v2-forecast-sign--income{
+  background:#EAF6EF;color:#357757;border:1px solid #D7EBDC;
+}
+.v2-forecast-sign--expense{
+  background:#FDEDED;color:#B9545E;border:1px solid #F4D7DB;
+}
