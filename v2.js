@@ -42,7 +42,7 @@ render();
 }
 function titleNav(){
 NAV.innerHTML=[['inicio','⌂','Início'],['lancamentos','☷','Lançamentos'],['cartoes','▤','Cartões'],['investimentos','◇','Investimentos'],['planejamento','▦','Planejamento'],['configuracoes','⚙','Configurações']].map(n=>'<button class="tab '+(page===n[0]?'active':'')+'" data-page="'+n[0]+'"><span class="ico">'+n[1]+'</span><span>'+n[2]+'</span></button>').join('');
-HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span><small>V2</small></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button>';
+HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span><small>V2</small></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
 function bankName(name){const n=String(name||'').toLowerCase();return BANKS.find(x=>x!=='Outro'&&n.includes(x.toLowerCase()))||'Instituição'}
@@ -160,9 +160,10 @@ return '<section class="v2-panel"><div class="v2-panel-top"><h2>'+esc(card.nickn
 (!db.cards.length?'<div class="v2-panel v2-empty">Cadastre cartões em Configurações para acompanhar compras.</div>':'');
 }
 function investmentTotals(){
-return {total:db.investments.reduce((a,x)=>a+Number(Object.values(x.snapshots||{}).sort((a,b)=>0).length?0:0),0)||db.investments.reduce((a,x)=>{
+return {total:db.investments.reduce((total,x)=>{
 const keys=Object.keys(x.snapshots||{}).sort(),last=keys.at(-1);
-return a+Number(last?x.snapshots[last].balance:x.initial||0)},0)};
+return total+Number(last?x.snapshots[last].balance:x.initial||0)
+},0)};
 }
 function investmentsPage(){
 const total=investmentTotals().total;
@@ -291,7 +292,7 @@ if(action==='newFixed'){openFixed(null);return}
 if(action==='newInvestment'){openInvestment(null);return}
 if(action==='backup'){download('vetra-v2-backup.json',JSON.stringify(db,null,2),'application/json');return}
 if(action==='csv'){csvExport();return}
-if(action==='logout'){document.getElementById('profile')?.click();return}
+if(action==='logout'){if(window.VETRA_CLOUD&&!window.VETRA_CLOUD.canLogout())return alert('Existem alterações não sincronizadas. Faça backup antes de sair.');document.getElementById('profile')?.click();return}
 const [cmd,id]=action.split(':');
 if(cmd==='editCard'){openCard(id);return}
 if(cmd==='removeCard'){confirmRemoveCard(id);return}
