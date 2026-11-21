@@ -243,3 +243,28 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 .v2-forecast-kpi.v2-balance-negative span,
 .v2-forecast-kpi:last-child.v2-balance-negative span{color:#985361!important}
 .v2-forecast-kpi.v2-balance-negative strong{color:#862D3E!important}
+
+/* VETRA | paleta final dos cards de saldo, conforme referência aprovada
+   Zero/positivo: grafite suavizado. Negativo: vermelho suave com texto preto. */
+.v2-hero:not(.v2-balance-negative){
+  background:#222222!important;color:#FFFFFF!important;
+}
+.v2-forecast-kpi:last-child:not(.v2-balance-negative){
+  background:#222222!important;border-color:#222222!important;color:#FFFFFF!important;
+}
+.v2-hero.v2-balance-negative,
+.v2-forecast-kpi.v2-balance-negative,
+.v2-forecast-kpi:last-child.v2-balance-negative{
+  background:#F4C9CD!important;border-color:#F0BABF!important;color:#171717!important;
+}
+.v2-hero.v2-balance-negative small,
+.v2-hero.v2-balance-negative strong,
+.v2-hero.v2-balance-negative span,
+.v2-forecast-kpi.v2-balance-negative small,
+.v2-forecast-kpi.v2-balance-negative strong,
+.v2-forecast-kpi.v2-balance-negative span,
+.v2-forecast-kpi:last-child.v2-balance-negative small,
+.v2-forecast-kpi:last-child.v2-balance-negative strong,
+.v2-forecast-kpi:last-child.v2-balance-negative span{
+  color:#171717!important;
+}
