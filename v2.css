@@ -16,8 +16,8 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 .v2-danger{color:#a33}
 .v2-header-add{min-height:43px}
 .v2-heading{margin-bottom:20px}.v2-heading h1{font-size:28px;font-weight:670;color:#171717;margin:0 0 7px;letter-spacing:-.035em}.v2-heading p{font-size:13px;color:#777;margin:0}
-.v2-month{background:#fff;border:1px solid #e9e9e9;border-radius:16px;display:flex;align-items:center;justify-content:space-between;margin:17px 0 20px;padding:5px 8px;min-height:49px}
-.v2-month strong{font-size:14px}.v2-month button{width:38px;height:35px;border:0;background:transparent;border-radius:9px;color:#444;font-size:24px}
+.v2-month{background:#fff;border:1px solid #e9e9e9;border-radius:14px;display:flex;align-items:center;justify-content:space-between;margin:17px 0 20px;padding:3px 8px;height:44px;min-height:44px;box-sizing:border-box}
+.v2-month strong{font-size:14px}.v2-month button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 34px;padding:0;border:0;background:transparent;border-radius:9px;color:#444;font-size:24px;line-height:1;vertical-align:middle;cursor:pointer}
 .v2-panel{border:1px solid #eaeaea;background:#fff;border-radius:20px;padding:22px;margin-bottom:17px;min-width:0}
 .v2-panel h2{font-size:16px;color:#171717;margin:0 0 12px}
 .v2-panel-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}.v2-panel-top h2{margin:0}
