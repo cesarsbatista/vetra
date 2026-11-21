@@ -35,7 +35,7 @@ async function myMembership(){
  if(error)throw error;return data;
 }
 async function getInvitations(){
- const {data,error}=await sb.from('vetra_invites').select('id,household_id,expires_at').ilike('email',user.email).gt('expires_at',new Date().toISOString());
+ const {data,error}=await sb.from('vetra_invites').select('id,household_id,expires_at').eq('email',user.email.toLowerCase()).gt('expires_at',new Date().toISOString());
  if(error)throw error;return data||[];
 }
 async function ensureHousehold(){
@@ -68,7 +68,7 @@ async function loadCloud(first=false){
   if(existing&&!localStorage.getItem(backupKey(user.id)))localStorage.setItem(backupKey(user.id),existing);
  }
  rev=data.revision;
- window.VETRA_APP?.replace(cleanPayload(data.payload));
+ window.VETRA_APP?.replace(cleanPayload(data.payload),false);
  notify('Dados sincronizados com o orçamento familiar.','ok');
 }
 function listen(){
@@ -81,12 +81,13 @@ function listen(){
 }
 function queueSave(db){
  if(!house||!user||conflict)return;
+ const sourceHouse=house.id,sourceUser=user.id,sourceClient=sb;
  const snapshot=cleanPayload(structuredClone(db));
  pending++;
  notify('Sincronizando alterações…');
  saveChain=saveChain.then(async()=>{
-  if(!house||!user)return;
-  const {data,error}=await sb.rpc('vetra_save_finances',{p_household:house.id,p_payload:snapshot,p_expected:rev});
+  if(conflict||!house||!user||house.id!==sourceHouse||user.id!==sourceUser||sb!==sourceClient)return;
+  const {data,error}=await sb.rpc('vetra_save_finances',{p_household:sourceHouse,p_payload:snapshot,p_expected:rev});
   if(error){conflict=true;throw error}
   rev=data;
  }).catch(err=>{notify('Não foi possível sincronizar. Dados mantidos neste navegador. Faça backup JSON antes de atualizar. '+err.message,'error')}).finally(()=>{
@@ -106,8 +107,9 @@ function disconnect(){
  if(channel&&sb)sb.removeChannel(channel);
  channel=null;house=null;user=null;rev=null;pending=0;conflict=false;
  hideSetup();clearStatus();
- const original=localStorage.getItem('vetra:v1:precloud:'+(window.VETRA_LAST_USER_ID||''));
- if(original){try{window.VETRA_APP?.replace(cleanPayload(JSON.parse(original)))}catch(e){}}
+ const original=localStorage.getItem(savedLocalKey);
+ if(original){try{window.VETRA_APP?.replace(cleanPayload(JSON.parse(original)),false)}catch(e){}}
+ else window.VETRA_APP?.replace({items:[],cards:[],budgets:{},settings:{}},false);
 }
 panel.addEventListener('submit',async e=>{
  if(e.target.id!=='familyCreate')return;
@@ -143,10 +145,10 @@ document.addEventListener('click',async e=>{
   const extra=local.items.filter(x=>!ids.has(x.id));
   if(!extra.length)return alert('Todos os lançamentos locais já estão na nuvem.');
   if(!confirm('Importar '+extra.length+' lançamentos locais para o orçamento compartilhado? Os lançamentos existentes serão mantidos.'))return;
-  current.items.push(...extra);window.VETRA_APP.replace(current);queueSave(current);
+  current.items.push(...extra);window.VETRA_APP.replace(current,false);queueSave(current);
  }
 });
-window.VETRA_CLOUD={connect,disconnect,queueSave,get user(){return user},get house(){return house}};
+window.VETRA_CLOUD={connect,disconnect,queueSave,canLogout:()=>!pending&&!conflict,get user(){return user},get house(){return house}};
 window.addEventListener('vetra:auth',e=>{
  const s=e.detail?.session;
  if(s){window.VETRA_LAST_USER_ID=s.user.id;connect(e.detail.client,s)}
