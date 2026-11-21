@@ -226,3 +226,20 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
   margin:0;transform:none;filter:none;
 }
 .v2-panel .v2-item>.v2-bank-logo--account{align-self:center}
+
+/* Calendar navigation: optical centering via identical SVG chevrons */
+.v2-month button{display:grid!important;place-items:center!important;padding:0!important;line-height:0!important;appearance:none;-webkit-appearance:none}
+.v2-month button svg{display:block;width:18px;height:18px;flex-shrink:0;transform:none}
+.v2-month button:hover{background:#f4f4f4}
+.v2-month button:focus-visible{outline:2px solid #686868;outline-offset:2px}
+/* Negative saldo: subtle warm red cards; nonnegative colors remain unchanged */
+.v2-hero.v2-balance-negative{background:#FAE9EB!important;color:#8E3544!important;border:1px solid #F2D7DB;box-shadow:none}
+.v2-hero.v2-balance-negative small,.v2-hero.v2-balance-negative span{color:#985361!important}
+.v2-hero.v2-balance-negative strong{color:#862D3E!important}
+.v2-forecast-kpi.v2-balance-negative,
+.v2-forecast-kpi:last-child.v2-balance-negative{background:#FAE9EB!important;color:#8E3544!important;border-color:#F2D7DB!important}
+.v2-forecast-kpi.v2-balance-negative small,
+.v2-forecast-kpi:last-child.v2-balance-negative small,
+.v2-forecast-kpi.v2-balance-negative span,
+.v2-forecast-kpi:last-child.v2-balance-negative span{color:#985361!important}
+.v2-forecast-kpi.v2-balance-negative strong{color:#862D3E!important}
