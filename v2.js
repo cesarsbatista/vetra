@@ -173,17 +173,32 @@ return '<section class="v2-panel"><div class="v2-panel-top"><h2>'+esc(card.nickn
 }).join('')+
 (!db.cards.length?'<div class="v2-panel v2-empty">Cadastre cartões em Configurações para acompanhar compras.</div>':'');
 }
-function investmentTotals(){
-return {total:db.investments.reduce((total,x)=>{
-const keys=Object.keys(x.snapshots||{}).sort(),last=keys.at(-1);
-return total+Number(last?x.snapshots[last].balance:x.initial||0)
-},0)};
+function portfolioAt(s){
+return db.investments.reduce((total,x)=>{
+const keys=Object.keys(x.snapshots||{}).filter(k=>k<=s).sort(),last=keys.at(-1);
+return total+Number(last?x.snapshots[last].balance:x.initial||0);
+},0);
+}
+function investmentTotals(){return {total:portfolioAt(month)}}
+function investmentChart(){
+if(!db.investments.length)return '';
+const months=Array.from({length:6},(_,i)=>addMonth(month,i-5));
+const values=months.map(portfolioAt),max=Math.max(1,...values);
+return '<section class="v2-panel"><h2>Evolução patrimonial · últimos 6 meses</h2>'+
+'<div class="v2-chart">'+months.map((s,i)=>'<div class="v2-chart-column"><div class="v2-chart-track" title="'+monthTitle(s)+': '+CM(values[i])+'"><span style="height:'+Math.max(2,Math.round(values[i]/max*100))+'%"></span></div><small>'+esc(s.slice(5))+'/'+esc(s.slice(2,4))+'</small></div>').join('')+'</div>'+
+'<p class="v2-help">Saldos informados manualmente; períodos sem atualização mantêm o último saldo registrado.</p></section>';
 }
 function investmentsPage(){
 const total=investmentTotals().total;
+const monthlyYield=db.investments.reduce((a,x)=>{
+const current=x.snapshots?.[month];if(!current)return a;
+const older=Object.keys(x.snapshots||{}).filter(k=>k<month).sort().at(-1);
+const before=older?Number(x.snapshots[older].balance):Number(x.initial||0);
+return a+Number(current.balance)-before-Number(current.contribution||0)+Number(current.withdrawal||0);
+},0);
 return banner('Investimentos','Carteira e rendimento mensal')+monthBar()+
 '<div class="v2-overview"><div class="v2-kpi"><small>Patrimônio registrado</small><strong>'+CM(total)+'</strong></div>'+
-'<div class="v2-kpi"><small>Aplicações</small><strong>'+db.investments.length+'</strong></div></div>'+
+'<div class="v2-kpi"><small>Aplicações</small><strong>'+db.investments.length+'</strong></div><div class="v2-kpi"><small>Rendimento do mês</small><strong>'+CM(monthlyYield)+'</strong></div></div>'+investmentChart()+
 '<div class="v2-toolbar">'+action('＋ Adicionar investimento','newInvestment')+'</div>'+
 (db.investments.length?db.investments.map(x=>{
 const keys=Object.keys(x.snapshots||{}).sort(),current=x.snapshots?.[month],previous=keys.filter(k=>k<month).at(-1),prev=previous?Number(x.snapshots[previous].balance):Number(x.initial||0);
