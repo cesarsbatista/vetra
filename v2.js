@@ -53,20 +53,21 @@ headerAction.innerHTML=onSettings?'Sair da conta':'＋ <span>Novo lançamento</s
 HDR.querySelector('.brand small')?.remove();
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
-function bankName(name){const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const n=normalize(name);return BANKS.find(x=>x!=='Outro'&&n.includes(normalize(x)))||(n.startsWith('bb ')||n==='bb'?'Banco do Brasil':'Instituição')}
+function bankName(name){const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const n=normalize(name);return BANKS.find(x=>x!=='Outro'&&n.includes(normalize(x)))||(n.startsWith('bb ')||n==='bb'?'Banco do Brasil':n.includes('rchlo')?'Riachuelo':'Instituição')}
 function logo(name){
 const brand=bankName(name);
-const paths={
-'Banco do Brasil':'Banco_do_Brasil_logo.svg',
+const localLogos={'Banco do Brasil':'assets/banco-do-brasil.webp','Riachuelo':'assets/riachuelo.webp'};
+const remoteLogos={
 'Itaú':'Itaú_Unibanco_logo_2023.svg',
 'Caixa':'Caixa_Econômica_Federal_logo_2026.svg',
 'Bradesco':'Banco_Bradesco_logo.svg',
 'Nubank':'Nubank_logo_2021.svg',
 'Santander':'Banco_Santander_Logotipo.svg'
 };
-const url=paths[brand]?'https://commons.wikimedia.org/wiki/Special:FilePath/'+encodeURIComponent(paths[brand]):'';
-return '<span class="v2-bank-logo" aria-label="'+esc(brand)+'">'+esc(brand==='Instituição'?'◇':brand.slice(0,2).toUpperCase())+
-(url?'<img src="'+url+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':'')+'</span>';
+const source=localLogos[brand]||(remoteLogos[brand]?'https://commons.wikimedia.org/wiki/Special:FilePath/'+encodeURIComponent(remoteLogos[brand]):'');
+return '<span class="v2-bank-logo'+(brand==='Riachuelo'?' v2-bank-logo--riachuelo':'')+'" aria-label="'+esc(brand)+'">'+
+esc(brand==='Instituição'?'◇':brand.slice(0,2).toUpperCase())+
+(source?'<img src="'+esc(source)+'" alt="" loading="lazy" onerror="this.remove()">':'')+'</span>';
 }
 function palette(c){
 const text=(c.name||'').toLowerCase();
