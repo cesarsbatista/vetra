@@ -1,0 +1,18 @@
+{
+  "name": "VETRA — Finanças",
+  "short_name": "VETRA",
+  "description": "Controle financeiro pessoal e familiar",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f4",
+  "theme_color": "#f5f6f4",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
