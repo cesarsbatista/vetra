@@ -25,7 +25,7 @@ const a=data&&typeof data==='object'?data:{};
 return {items:Array.isArray(a.items)?a.items:[],cards:Array.isArray(a.cards)?a.cards:[],budgets:a.budgets&&typeof a.budgets==='object'?a.budgets:{},settings:a.settings&&typeof a.settings==='object'?a.settings:{name:'Família'},accounts:Array.isArray(a.accounts)?a.accounts:[],fixed:Array.isArray(a.fixed)?a.fixed:[],investments:Array.isArray(a.investments)?a.investments:[]};
 }
 let page='inicio',section='cartoes',month=ym(today()),editItem=null,editCard=null,editAccount=null,editFixed=null,editInvestment=null;
-let mode='despesa',formPayment='Pix',creditType='avista',working=false;
+let mode='despesa',formPayment='Pix',creditType='avista',installmentCountChoice=2,working=false;
 const opts=(arr,value)=>arr.map(x=>'<option value="'+esc(x)+'" '+(x===value?'selected':'')+'>'+esc(x)+'</option>').join('');
 const field=(label,name,value='',type='text',extra='')=>'<label class="v2-field">'+esc(label)+'<input name="'+esc(name)+'" type="'+type+'" value="'+esc(value)+'" '+extra+'></label>';
 const select=(label,name,arr,value)=>'<label class="v2-field">'+esc(label)+'<select name="'+esc(name)+'">'+opts(arr,value)+'</select></label>';
@@ -188,7 +188,7 @@ return due<=closing?addMonth(closeMonth,1):closeMonth;
 }
 function newForm(){
 const x=db.items.find(v=>v.id===editItem)||{};
-if(editItem){mode=x.type==='receita'?'receita':x.type==='investimento'?'investimento':'despesa';formPayment=x.payment||(x.type==='cartao'?'Crédito':'Pix');creditType=Number(x.installmentCount)>1?'parcelado':'avista'}
+if(editItem){mode=x.type==='receita'?'receita':x.type==='investimento'?'investimento':'despesa';formPayment=x.payment||(x.type==='cartao'?'Crédito':'Pix');creditType=Number(x.installmentCount)>1?'parcelado':'avista';installmentCountChoice=Number(x.installmentCount)>1?Number(x.installmentCount):2}
 const isExpense=mode==='despesa',isIncome=mode==='receita';
 const cardOptions=db.cards.map(c=>[c.id,c.nickname||c.name]);
 const accountOptions=db.accounts.map(c=>[c.id,c.bank+' · '+(c.holder||'Titular não informado')+' · '+c.type]);
@@ -197,14 +197,19 @@ const paymentFields=isExpense?
  select('Pagamento','payment',['Crédito','Débito','Pix','Dinheiro'],payment)+
  (payment==='Crédito'?'<div class="v2-field"><label>Cartão</label><select name="cardId" required>'+cardOptions.map(v=>'<option value="'+esc(v[0])+'" '+(x.cardId===v[0]?'selected':'')+'>'+esc(v[1])+'</option>').join('')+'</select>'+(cardOptions.length?'':'<small>Cadastre um cartão em Configurações.</small>')+'</div>'+
  select('Tipo de compra','creditType',['À vista','Parcelado'],creditType==='parcelado'?'Parcelado':'À vista')+
- (creditType==='parcelado'?select('Parcelas','installments',Array.from({length:23},(_,i)=>String(i+2)),String(x.installmentCount||2)):''):'')+
+ (creditType==='parcelado'?
+ select('Quantidade total de parcelas','installments',Array.from({length:23},(_,i)=>String(i+2)),String(installmentCountChoice))+
+ select('Parcela inicial (primeira a registrar)','firstInstallment',Array.from({length:installmentCountChoice},(_,i)=>String(i+1)),String(x.firstTrackedInstallment||1))+
+ '<label class="v2-field">Mês da parcela inicial<input type="month" name="firstInstallmentMonth" value="'+esc(x.firstTrackedMonth||ym(today()))+'" required></label>'+
+ '<p class="v2-help">Para um parcelamento já em andamento, selecione a parcela atual (ex.: 4 de 10) e seu mês de vencimento. O sistema não lançará as parcelas anteriores.</p>'
+ :''):'')+
  (payment==='Pix'||payment==='Débito'?'<label class="v2-field">Conta<select name="accountId" required>'+accountOptions.map(v=>'<option value="'+esc(v[0])+'" '+(x.accountId===v[0]?'selected':'')+'>'+esc(v[1])+'</option>').join('')+'</select>'+(accountOptions.length?'':'<small>Cadastre uma conta em Configurações.</small>')+'</label>':''):'';
 const categories=[...(isIncome?INCOME_CATS:isExpense?EXPENSE_CATS:['Aplicação','Resgate','Rendimento'])];if(x.category&&!categories.includes(x.category))categories.unshift(x.category);
 const descriptionLabel=isIncome?'Origem':isExpense?'Estabelecimento / Serviço':'Investimento / Instituição';
 return banner(editItem?'Editar lançamento':'Novo lançamento','Registre suas movimentações financeiras')+
 '<div class="v2-segments">'+[['despesa','Despesa'],['receita','Receita'],['investimento','Investimento']].map(v=>'<button class="'+(mode===v[0]?'selected':'')+'" data-mode="'+v[0]+'">'+v[1]+'</button>').join('')+'</div>'+
 '<form id="v2-entry" class="v2-panel v2-form">'+paymentFields+
-field('Valor total (R$)','amount',x.installmentGroup&&x.installmentCount?db.items.filter(i=>i.installmentGroup===x.installmentGroup).reduce((v,i)=>v+Number(i.amount),0):x.amount??'','number','min="0.01" step="0.01" required')+
+field('Valor total (R$)','amount',x.installmentGroup&&x.installmentCount?(x.purchaseTotal??db.items.filter(i=>i.installmentGroup===x.installmentGroup).reduce((v,i)=>v+Number(i.amount),0)):x.amount??'','number','min="0.01" step="0.01" required')+
 field(descriptionLabel,'description',x.origin||x.description||'','text','required maxlength="100"')+
 select('Categoria','category',categories,categories.includes(x.category)?x.category:categories[0])+
 '<div class="v2-two">'+field('Data','date',x.purchaseDate||x.date||today(),'date','required')+select('Situação','status',['previsto','realizado'],x.status||(isExpense&&payment==='Crédito'?'previsto':'realizado'))+'</div>'+
@@ -390,7 +395,7 @@ function render(){
 }
 function go(p){page=p;render();window.scrollTo({top:0,behavior:'instant'})}
 function setupEntry(){
-editItem=null;mode='despesa';formPayment='Pix';creditType='avista';go('novo');
+editItem=null;mode='despesa';formPayment='Pix';creditType='avista';installmentCountChoice=2;go('novo');
 }
 function confirmRemoveCard(id){
 const c=db.cards.find(x=>x.id===id);if(!c)return;
@@ -463,16 +468,25 @@ if(oldGroup)db.items=db.items.filter(x=>x.installmentGroup!==oldGroup);
 else if(old)db.items=db.items.filter(x=>x.id!==old.id);
 const base={type:mode,description:name,origin:mode==='receita'?name:undefined,category,date,status,notes,payment,cardId,accountId,by:window.VETRA_CURRENT_SESSION?.user?.email||'Local'};
 if(count>1){
-const card=db.cards.find(x=>x.id===cardId),first=creditFirstMonth(date,card),cents=Math.round(amount*100),baseCents=Math.floor(cents/count);
-for(let i=0;i<count;i++){const each=(baseCents+(i===count-1?cents-baseCents*count:0))/100;
-db.items.push({...base,id:uid(),amount:each,date:monthDate(addMonth(first,i),Number(card?.due)||15),
-purchaseDate:date,installmentGroup:group,installmentNo:i+1,installmentCount:count,status:status==='realizado'&&date<=today()&&monthDate(addMonth(first,i),Number(card?.due)||15)<=today()?'realizado':'previsto'})}
+const card=db.cards.find(x=>x.id===cardId);
+const firstTracked=Number(f.get('firstInstallment')||1);
+const trackedMonth=String(f.get('firstInstallmentMonth')||'');
+if(!Number.isInteger(firstTracked)||firstTracked<1||firstTracked>count)return alert('A parcela inicial deve estar entre 1 e '+count+'.');
+if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(trackedMonth))return alert('Informe o mês de vencimento da parcela inicial.');
+const first=firstTracked>1?trackedMonth:creditFirstMonth(date,card);
+const cents=Math.round(amount*100),baseCents=Math.floor(cents/count);
+for(let i=firstTracked-1;i<count;i++){
+ const each=(baseCents+(i===count-1?cents-baseCents*count:0))/100;
+ const dueDate=monthDate(addMonth(first,i-(firstTracked-1)),Number(card?.due)||15);
+ db.items.push({...base,id:uid(),amount:each,date:dueDate,purchaseDate:date,purchaseTotal:amount,firstTrackedInstallment:firstTracked,firstTrackedMonth:trackedMonth,
+ installmentGroup:group,installmentNo:i+1,installmentCount:count,status:status==='realizado'&&dueDate<=today()?'realizado':'previsto'})
+}
 }else{
  const card=db.cards.find(x=>x.id===cardId);
  const billDate=payment==='Crédito'?monthDate(creditFirstMonth(date,card),Number(card?.due)||15):date;
  db.items.push({...base,id:old?.id||uid(),amount,date:billDate,status:payment==='Crédito'&&billDate>today()?'previsto':status,purchaseDate:payment==='Crédito'?date:null,installmentGroup:null,installmentNo:null,installmentCount:null});
 }
-editItem=null;month=payment==='Crédito'?creditFirstMonth(date,db.cards.find(x=>x.id===cardId)):ym(date);write();go('lancamentos');
+editItem=null;month=payment==='Crédito'&&count>1?Number(f.get('firstInstallment')||1)>1?String(f.get('firstInstallmentMonth')):creditFirstMonth(date,db.cards.find(x=>x.id===cardId)):payment==='Crédito'?creditFirstMonth(date,db.cards.find(x=>x.id===cardId)):ym(date);write();go('lancamentos');
 }
 document.addEventListener('click',e=>{
 const t=e.target.closest('[data-page]');if(t){page=t.dataset.page;section=page==='configuracoes'?'cartoes':page==='planejamento'?'fixas':section;go(page);return}
@@ -512,6 +526,7 @@ if(['colorPicker','colorHex','name','holder','brand','last4'].includes(name))upd
 document.addEventListener('change',e=>{
 if(e.target.name==='payment'&&e.target.closest('#v2-entry')){formPayment=e.target.value;rerenderEntryPreserving()}
 if(e.target.name==='creditType'&&e.target.closest('#v2-entry')){creditType=e.target.value==='Parcelado'?'parcelado':'avista';rerenderEntryPreserving()}
+if(e.target.name==='installments'&&e.target.closest('#v2-entry')){installmentCountChoice=Number(e.target.value)||2;rerenderEntryPreserving()}
 });
 document.addEventListener('submit',e=>{
 const f=e.target;if(!f.id.startsWith('v2-'))return;e.preventDefault();const v=new FormData(f);
