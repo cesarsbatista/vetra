@@ -462,6 +462,10 @@ if(payment==='Crédito'&&!db.cards.some(x=>x.id===cardId))return alert('Cadastre
 if(['Pix','Débito'].includes(payment)&&!db.accounts.some(x=>x.id===accountId))return alert('Cadastre uma conta em Configurações.');
 let count=payment==='Crédito'&&String(f.get('creditType'))==='Parcelado'?Number(f.get('installments')):1;
 if(!Number.isInteger(count)||count<1||count>24)return alert('Quantidade de parcelas inválida.');
+const firstTracked=count>1?Number(f.get('firstInstallment')||1):1;
+const trackedMonth=count>1?String(f.get('firstInstallmentMonth')||''):'';
+if(count>1&&(!Number.isInteger(firstTracked)||firstTracked<1||firstTracked>count))return alert('A parcela inicial deve estar entre 1 e '+count+'.');
+if(count>1&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(trackedMonth))return alert('Informe o mês de vencimento da parcela inicial.');
 if(old?.installmentGroup&&count===1&&!confirm('Esta edição substituirá toda a compra parcelada por um lançamento. Continuar?'))return;
 const oldGroup=old?.installmentGroup,group=count>1?(oldGroup||uid()):null;
 if(oldGroup)db.items=db.items.filter(x=>x.installmentGroup!==oldGroup);
@@ -469,10 +473,7 @@ else if(old)db.items=db.items.filter(x=>x.id!==old.id);
 const base={type:mode,description:name,origin:mode==='receita'?name:undefined,category,date,status,notes,payment,cardId,accountId,by:window.VETRA_CURRENT_SESSION?.user?.email||'Local'};
 if(count>1){
 const card=db.cards.find(x=>x.id===cardId);
-const firstTracked=Number(f.get('firstInstallment')||1);
-const trackedMonth=String(f.get('firstInstallmentMonth')||'');
-if(!Number.isInteger(firstTracked)||firstTracked<1||firstTracked>count)return alert('A parcela inicial deve estar entre 1 e '+count+'.');
-if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(trackedMonth))return alert('Informe o mês de vencimento da parcela inicial.');
+
 const first=firstTracked>1?trackedMonth:creditFirstMonth(date,card);
 const cents=Math.round(amount*100),baseCents=Math.floor(cents/count);
 for(let i=firstTracked-1;i<count;i++){
