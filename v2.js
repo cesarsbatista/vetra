@@ -54,7 +54,7 @@ HDR.querySelector('.brand small')?.remove();
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
 function bankName(name){const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const n=normalize(name);return BANKS.find(x=>x!=='Outro'&&n.includes(normalize(x)))||(n.startsWith('bb ')||n==='bb'?'Banco do Brasil':n.includes('rchlo')?'Riachuelo':'Instituição')}
-function logo(name){
+function logo(name, context='card'){
 const brand=bankName(name);
 const localLogos={'Banco do Brasil':'assets/banco-do-brasil.webp','Riachuelo':'assets/riachuelo.webp'};
 const remoteLogos={
@@ -62,10 +62,11 @@ const remoteLogos={
 'Caixa':'Caixa_Econômica_Federal_logo_2026.svg',
 'Bradesco':'Banco_Bradesco_logo.svg',
 'Nubank':'Nubank_logo_2021.svg',
-'Santander':'Banco_Santander_Logotipo.svg'
+'Santander':'Banco_Santander_Logotipo.svg',
+'Inter':'Logo_do_banco_Inter_(2023).svg'
 };
 const source=localLogos[brand]||(remoteLogos[brand]?'https://commons.wikimedia.org/wiki/Special:FilePath/'+encodeURIComponent(remoteLogos[brand]):'');
-return '<span class="v2-bank-logo'+(brand==='Riachuelo'?' v2-bank-logo--riachuelo':'')+'" aria-label="'+esc(brand)+'">'+
+return '<span class="v2-bank-logo'+(brand==='Riachuelo'?' v2-bank-logo--riachuelo':'')+(context==='account'?' v2-bank-logo--account':'')+'" aria-label="'+esc(brand)+'">'+
 esc(brand==='Instituição'?'◇':brand.slice(0,2).toUpperCase())+
 (source?'<img src="'+esc(source)+'" alt="" loading="lazy" onerror="this.remove()">':'')+'</span>';
 }
@@ -298,7 +299,7 @@ return banner('Configurações','Contas, cartões e preferências')+
 '<div class="v2-segments v2-settings-tabs">'+[['cartoes','Cartões'],['contas','Contas'],['familia','Família'],['dados','Dados']].map(a=>'<button class="'+(section===a[0]?'selected':'')+'" data-section="'+a[0]+'">'+a[1]+'</button>').join('')+'</div>'+
 (section==='cartoes'?cardsManagement():section==='contas'?'<div class="v2-toolbar">'+action('＋ Adicionar conta','newAccount')+'</div>'+
 '<div class="v2-panel"><h2>Contas bancárias</h2>'+
-(db.accounts.map(x=>'<div class="v2-item">'+logo(x.bank)+'<div class="v2-item-main"><strong>'+esc(x.bank)+'</strong><small>'+esc(x.holder||'Titular não informado')+' · '+esc(x.type)+'</small></div>'+
+(db.accounts.map(x=>'<div class="v2-item">'+logo(x.bank,'account')+'<div class="v2-item-main"><strong>'+esc(x.bank)+'</strong><small>'+esc(x.holder||'Titular não informado')+' · '+esc(x.type)+'</small></div>'+
 '<button class="v2-secondary" data-action="editAccount:'+x.id+'">Editar</button><button class="v2-secondary v2-danger" data-action="removeAccount:'+x.id+'">Excluir</button></div>').join('')||'<p class="v2-empty">Nenhuma conta cadastrada.</p>')+'</div>':
 section==='familia'?'<div id="v2-family-panel">'+(window.VETRA_CLOUD?.settingsHTML?.()||'<div class="v2-panel">Acesse com sua conta para criar e compartilhar o orçamento familiar.</div>')+'</div>':
 '<div class="v2-panel"><h2>Seus dados</h2><div class="v2-buttons">'+action('Exportar backup JSON','backup',true)+action('Exportar CSV','csv',true)+'</div><p class="v2-help">Backups são importantes antes de grandes alterações.</p></div>')+
