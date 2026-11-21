@@ -6,7 +6,7 @@ const panel=document.createElement('div');panel.id='vetra-family-setup';panel.cl
 let sb=null,user=null,house=null,rev=null,channel=null,saveChain=Promise.resolve(),pending=0,conflict=false,loading=false,refreshAfterSave=false;
 const savedLocalKey='vetra:v1',backupKey=id=>'vetra:v1:precloud:'+id;
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const cleanPayload=p=>({items:Array.isArray(p?.items)?p.items:[],cards:Array.isArray(p?.cards)?p.cards:[],budgets:p?.budgets&&typeof p.budgets==='object'?p.budgets:{},settings:p?.settings&&typeof p.settings==='object'?p.settings:{}});
+const cleanPayload=p=>({items:Array.isArray(p?.items)?p.items:[],cards:Array.isArray(p?.cards)?p.cards:[],budgets:p?.budgets&&typeof p.budgets==='object'?p.budgets:{},settings:p?.settings&&typeof p.settings==='object'?p.settings:{},accounts:Array.isArray(p?.accounts)?p.accounts:[],fixed:Array.isArray(p?.fixed)?p.fixed:[],investments:Array.isArray(p?.investments)?p.investments:[]});
 function notify(message,type='info'){status.hidden=false;status.textContent=message;status.dataset.kind=type}
 function clearStatus(){status.hidden=true;status.textContent=''}
 function showSetup(html){panel.hidden=false;panel.innerHTML='<div class="family-dialog"><div class="family-icon">V</div>'+html+'</div>'}
@@ -48,7 +48,7 @@ async function makeHousehold(name){
  const {data,error}=await sb.from('vetra_households').insert({name,owner_id:user.id}).select('id,name,owner_id').single();
  if(error)throw error;
  const member=await sb.from('vetra_members').insert({household_id:data.id,user_id:user.id});if(member.error)throw member.error;
- const initial={items:[],cards:[{id:'bb',name:'Banco do Brasil · Smiles Platinum',closing:5,due:12},{id:'itau',name:'Itaú · Ana Cristina',closing:8,due:16},{id:'ria',name:'Riachuelo · César Augusto',closing:10,due:18}],budgets:{},settings:{name}};
+ const initial={items:[],cards:[],budgets:{},settings:{name},accounts:[],fixed:[],investments:[]};
  const doc=await sb.from('vetra_finances').insert({household_id:data.id,payload:initial,updated_by:user.id});
  if(doc.error)throw doc.error;
  house=data;rev=0;await ensureHousehold();
@@ -148,7 +148,7 @@ document.addEventListener('click',async e=>{
   current.items.push(...extra);window.VETRA_APP.replace(current,false);queueSave(current);
  }
 });
-window.VETRA_CLOUD={connect,disconnect,queueSave,canLogout:()=>!pending&&!conflict,get user(){return user},get house(){return house}};
+window.VETRA_CLOUD={connect,disconnect,queueSave,settingsHTML:householdPanel,canLogout:()=>!pending&&!conflict,get user(){return user},get house(){return house}};
 window.addEventListener('vetra:auth',e=>{
  const s=e.detail?.session;
  if(s){window.VETRA_LAST_USER_ID=s.user.id;connect(e.detail.client,s)}
