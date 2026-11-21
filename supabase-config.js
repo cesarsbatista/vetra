@@ -1,6 +1,6 @@
-/* Configure após criar o projeto VETRA em Supabase.
-   Apenas URL e chave PUBLISHABLE podem ficar aqui; nunca inclua service_role. */
+/* VETRA — Supabase Auth (public client configuration only).
+ * This publishable key is intended for browser use. Never expose secret/service_role keys. */
 window.VETRA_SUPABASE = {
-  url: "",
-  publishableKey: ""
+  url: "https://odmsrxqfuyphtqofegsj.supabase.co",
+  publishableKey: "sb_publishable_xahMOd2v00DRDKJwc8wbZA_HynaOlFF"
 };
