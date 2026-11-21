@@ -81,8 +81,25 @@ if(/santander/.test(text))return 'red';
 if(/banco do brasil/.test(text))return 'gold';
 return 'dark';
 }
+function normalizedHex(value){
+const s=String(value||'').trim();
+if(/^#[0-9a-f]{6}$/i.test(s))return s.toUpperCase();
+if(/^#[0-9a-f]{3}$/i.test(s))return ('#'+[...s.slice(1)].map(x=>x+x).join('')).toUpperCase();
+return '';
+}
+function suggestedColor(c){
+return {smiles:'#B5BABE',gold:'#E4C329',orange:'#DE8230',purple:'#7840AC',blue:'#2E6299',red:'#AA3443',black:'#171717',dark:'#353535'}[palette(c)]||'#353535';
+}
+function cardInk(color){
+const h=normalizedHex(color);
+if(!h)return '#FFFFFF';
+const s=h.slice(1),rgb=[0,2,4].map(i=>parseInt(s.slice(i,i+2),16)/255);
+const lin=rgb.map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4));
+return .2126*lin[0]+.7152*lin[1]+.0722*lin[2]>.179?'#171717':'#FFFFFF';
+}
 function plastic(c){
-return '<div class="v2-plastic v2-plastic--'+palette(c)+'"><div class="v2-plastic-head">'+logo(c.name)+'<span>'+esc(c.name||'Cartão')+'</span></div><div class="v2-plastic-num">'+(c.last4?'•••• •••• •••• '+esc(c.last4):'•••• •••• •••• ••••')+'</div><div class="v2-plastic-foot"><div><small>TITULAR</small><strong>'+esc(c.holder||'Não informado')+'</strong></div><b>'+esc(c.brand||'Cartão')+'</b></div></div>';
+const chosen=normalizedHex(c.color),style=chosen?' style="background:'+chosen+';color:'+cardInk(chosen)+'"':'';
+return '<div class="v2-plastic v2-plastic--'+palette(c)+'"'+style+'><div class="v2-plastic-head">'+logo(c.name)+'<span>'+esc(c.name||'Cartão')+'</span></div><div class="v2-plastic-num">'+(c.last4?'•••• •••• •••• '+esc(c.last4):'•••• •••• •••• ••••')+'</div><div class="v2-plastic-foot"><div><small>TITULAR</small><strong>'+esc(c.holder||'Não informado')+'</strong></div><b>'+esc(c.brand||'Cartão')+'</b></div></div>';
 }
 function fixedOccurrence(f,s){
 if(!f.active)return null;
@@ -287,15 +304,35 @@ const e=document.getElementById('v2-modal');e.innerHTML='<div class="v2-modal-di
 }
 function closeModal(){document.getElementById('v2-modal').hidden=true;editCard=editAccount=editFixed=editInvestment=null}
 function openCard(id){
-const c=db.cards.find(x=>x.id===id)||{};editCard=id||null;
-modal(id?'Editar cartão':'Adicionar cartão','<form id="v2-card-form">'+field('Nome do cartão','name',c.name||'','text','required maxlength="80"')+
-field('Titular','holder',c.holder||'','text','maxlength="80"')+field('Apelido','nickname',c.nickname||'','text','maxlength="32"')+
-select('Bandeira','brand',BRANDS,c.brand||'Visa')+
-field('Últimos quatro dígitos (opcional)','last4',c.last4||'','text','pattern="[0-9]{4}" maxlength="4" inputmode="numeric"')+
-'<div class="v2-two">'+field('Dia de fechamento','closing',c.closing||5,'number','min="1" max="31" required')+
-field('Dia de vencimento','due',c.due||12,'number','min="1" max="31" required')+'</div>'+
-'<label class="v2-check"><input type="checkbox" name="primary" '+(c.primary?'checked':'')+'> Cartão principal</label>'+
-'<p class="v2-help">A miniatura adota cores ilustrativas de acordo com o banco ou modelo. Não informe o número completo nem CVV.</p><button class="v2-primary">Salvar cartão</button></form>');
+const card=db.cards.find(x=>x.id===id)||{};editCard=id||null;
+const base=normalizedHex(card.color)||suggestedColor(card),custom=normalizedHex(card.color);
+modal(id?'Editar cartão':'Adicionar cartão','<form id="v2-card-form">'+
+field('Nome do cartão','name',card.name||'','text','required maxlength="80"')+
+field('Titular','holder',card.holder||'','text','maxlength="80"')+
+field('Apelido','nickname',card.nickname||'','text','maxlength="32"')+
+select('Bandeira','brand',BRANDS,card.brand||'Visa')+
+field('Últimos quatro dígitos (opcional)','last4',card.last4||'','text','pattern="[0-9]{4}" maxlength="4" inputmode="numeric"')+
+'<div class="v2-two">'+field('Dia de fechamento','closing',card.closing||5,'number','min="1" max="31" required')+
+field('Dia de vencimento','due',card.due||12,'number','min="1" max="31" required')+'</div>'+
+'<div class="v2-card-color-section"><label class="v2-field-label" for="v2-card-color-picker">Cor do cartão</label>'+
+'<div class="v2-color-controls"><input type="color" id="v2-card-color-picker" name="colorPicker" value="'+base+'" aria-label="Selecionar cor RGB do cartão">'+
+'<label class="v2-field v2-color-hex">Código hexadecimal<input type="text" id="v2-card-color-hex" name="colorHex" value="'+base+'" maxlength="7" pattern="#[0-9a-fA-F]{6}" spellcheck="false" autocomplete="off" inputmode="text"></label>'+
+'<button type="button" class="v2-secondary" data-action="resetCardColor">Cor original</button></div>'+
+'<input type="hidden" id="v2-card-color-custom" name="colorCustom" value="'+custom+'">'+
+'<p class="v2-help">Escolha uma cor na roda RGB ou informe o código hexadecimal. A miniatura será atualizada em tempo real.</p>'+
+'<div id="v2-card-preview" class="v2-card-preview">'+plastic(card)+'</div></div>'+
+'<label class="v2-check"><input type="checkbox" name="primary" '+(card.primary?'checked':'')+'> Cartão principal</label>'+
+'<p class="v2-help">Informe somente os quatro últimos dígitos do cartão. Não cadastre CVV ou número completo.</p>'+
+'<button class="v2-primary">Salvar cartão</button></form>');
+}
+function updateCardPreview(){
+const form=document.getElementById('v2-card-form');if(!form)return;
+const current=db.cards.find(x=>x.id===editCard)||{};
+const get=name=>form.elements.namedItem(name)?.value||'';
+const color=normalizedHex(get('colorCustom'));
+const card={...current,name:get('name'),holder:get('holder'),brand:get('brand'),last4:get('last4'),color};
+const preview=document.getElementById('v2-card-preview');
+if(preview)preview.innerHTML=plastic(card);
 }
 function openAccount(id){const a=db.accounts.find(x=>x.id===id)||{};editAccount=id||null;
 modal(id?'Editar conta':'Cadastrar conta bancária','<form id="v2-account-form">'+
@@ -367,6 +404,15 @@ if(action==='closeModal'){closeModal();return}
 if(action==='planning'){page='planejamento';section='fixas';render();return}
 if(action==='transactions'){go('lancamentos');return}
 if(action==='newCard'){openCard(null);return}
+if(action==='resetCardColor'){
+const form=document.getElementById('v2-card-form');if(!form)return;
+const card={...(db.cards.find(x=>x.id===editCard)||{}),name:form.elements.namedItem('name')?.value||''};
+const base=suggestedColor(card);
+form.elements.namedItem('colorCustom').value='';
+form.elements.namedItem('colorHex').value=base;
+form.elements.namedItem('colorPicker').value=base;
+updateCardPreview();return;
+}
 if(action==='newAccount'){openAccount(null);return}
 if(action==='newFixed'){openFixed(null);return}
 if(action==='newInvestment'){openInvestment(null);return}
@@ -452,6 +498,17 @@ if(element.name&&Object.prototype.hasOwnProperty.call(values,element.name)&&Arra
 }
 }
 }
+document.addEventListener('input',e=>{
+const form=e.target.closest?.('#v2-card-form');
+if(!form)return;
+const name=e.target.name;
+const custom=form.elements.namedItem('colorCustom');
+const picker=form.elements.namedItem('colorPicker');
+const hex=form.elements.namedItem('colorHex');
+if(name==='colorPicker'){hex.value=picker.value.toUpperCase();custom.value=hex.value}
+if(name==='colorHex'){const parsed=normalizedHex(hex.value);if(parsed){picker.value=parsed;custom.value=parsed}else return}
+if(['colorPicker','colorHex','name','holder','brand','last4'].includes(name))updateCardPreview();
+});
 document.addEventListener('change',e=>{
 if(e.target.name==='payment'&&e.target.closest('#v2-entry')){formPayment=e.target.value;rerenderEntryPreserving()}
 if(e.target.name==='creditType'&&e.target.closest('#v2-entry')){creditType=e.target.value==='Parcelado'?'parcelado':'avista';rerenderEntryPreserving()}
@@ -465,7 +522,10 @@ const name=String(v.get('name')||'').trim(),holder=String(v.get('holder')||'').t
 if(!name||!Number.isInteger(closing)||closing<1||closing>31||!Number.isInteger(due)||due<1||due>31||(last4&&!/^\d{4}$/.test(last4)))return alert('Confira nome, datas e últimos quatro dígitos.');
 const id=editCard||uid(),primary=v.has('primary')||!db.cards.length;
 if(primary)db.cards=db.cards.map(x=>({...x,primary:false}));
-const card={id,name,holder,nickname:String(v.get('nickname')||''),brand:String(v.get('brand')||'Outra'),last4,closing,due,primary};
+const existingCard=db.cards.find(x=>x.id===id)||{};
+const chosenColor=String(v.get('colorCustom')||'');
+if(chosenColor&&!normalizedHex(chosenColor))return alert('Informe uma cor hexadecimal válida.');
+const card={...existingCard,id,name,holder,nickname:String(v.get('nickname')||''),brand:String(v.get('brand')||'Outra'),last4,closing,due,primary,color:normalizedHex(chosenColor)};
 db.cards=editCard?db.cards.map(x=>x.id===id?{...x,...card}:x):[...db.cards,card];
 closeModal();write();return;
 }
