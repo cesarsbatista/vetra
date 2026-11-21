@@ -92,14 +92,14 @@ if(/^#[0-9a-f]{3}$/i.test(s))return ('#'+[...s.slice(1)].map(x=>x+x).join('')).t
 return '';
 }
 function suggestedColor(c){
-return {smiles:'#B5BABE',gold:'#E4C329',orange:'#DE8230',purple:'#7840AC',blue:'#2E6299',red:'#AA3443',black:'#171717',dark:'#353535'}[palette(c)]||'#353535';
+return {smiles:'#B5BABE',gold:'#E4C329',orange:'#DE8230',purple:'#7840AC',blue:'#2E6299',red:'#AA3443',black:'#222222',dark:'#353535'}[palette(c)]||'#353535';
 }
 function cardInk(color){
 const h=normalizedHex(color);
 if(!h)return '#FFFFFF';
 const s=h.slice(1),rgb=[0,2,4].map(i=>parseInt(s.slice(i,i+2),16)/255);
 const lin=rgb.map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4));
-return .2126*lin[0]+.7152*lin[1]+.0722*lin[2]>.179?'#171717':'#FFFFFF';
+return .2126*lin[0]+.7152*lin[1]+.0722*lin[2]>.179?'#222222':'#FFFFFF';
 }
 function plastic(c){
 const chosen=normalizedHex(c.color),style=chosen?' style="background:'+chosen+';color:'+cardInk(chosen)+'"':'';
