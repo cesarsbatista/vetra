@@ -207,3 +207,22 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 .v2-forecast-sign--expense{
   background:#FDEDED;color:#B9545E;border:1px solid #F4D7DB;
 }
+
+/* Contas bancárias: logos completos, proporcionais e uniformemente alinhados.
+   Mantém as miniaturas dos cartões independentes destas regras. */
+.v2-bank-logo--account{
+  display:grid;place-items:center;
+  width:42px;height:42px;min-width:42px;min-height:42px;
+  flex:0 0 42px;aspect-ratio:1;
+  background:#fff;color:#303030;border:1px solid #ececec;
+  border-radius:12px;overflow:hidden;box-sizing:border-box;
+}
+.v2-bank-logo--account img,
+.v2-plastic-head .v2-bank-logo--account img{
+  position:absolute;inset:0;display:block;
+  width:100%;height:100%;max-width:100%;
+  object-fit:contain;object-position:center;
+  padding:5px;background:#fff;box-sizing:border-box;
+  margin:0;transform:none;filter:none;
+}
+.v2-panel .v2-item>.v2-bank-logo--account{align-self:center}
