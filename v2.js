@@ -142,7 +142,7 @@ return banner(editItem?'Editar lançamento':'Novo lançamento','Registre suas mo
 field('Valor total (R$)','amount',x.installmentGroup&&x.installmentCount?db.items.filter(i=>i.installmentGroup===x.installmentGroup).reduce((v,i)=>v+Number(i.amount),0):x.amount??'','number','min="0.01" step="0.01" required')+
 field(descriptionLabel,'description',x.origin||x.description||'','text','required maxlength="100"')+
 select('Categoria','category',categories,categories.includes(x.category)?x.category:categories[0])+
-'<div class="v2-two">'+field('Data','date',x.purchaseDate||x.date||today(),'date','required')+select('Situação','status',['realizado','previsto'],x.status||'realizado')+'</div>'+
+'<div class="v2-two">'+field('Data','date',x.purchaseDate||x.date||today(),'date','required')+select('Situação','status',['previsto','realizado'],x.status||(isExpense&&payment==='Crédito'?'previsto':'realizado'))+'</div>'+
 '<label class="v2-field">Observações<textarea name="notes">'+esc(x.notes||'')+'</textarea></label>'+
 '<div class="v2-buttons"><button type="submit" class="v2-primary">Salvar lançamento</button>'+(editItem?'<button type="button" class="v2-secondary v2-danger" data-action="deleteItem">Excluir</button>':'')+'</div>'+
 (isExpense&&payment==='Crédito'?'<p class="v2-help">Compras parceladas são lançadas nas faturas mensais correspondentes. O valor total é dividido sem duplicar despesas.</p>':'')+
@@ -168,7 +168,7 @@ return banner('Cartões','Compras, parcelas e faturas')+monthBar()+
 db.cards.map(card=>{
 const purchases=list.filter(x=>x.cardId===card.id);
 return '<section class="v2-panel"><div class="v2-panel-top"><h2>'+esc(card.nickname||card.name)+'</h2>'+pill(CM(sum(purchases)))+'</div>'+
-'<p class="v2-sub">Fatura de '+monthTitle(month)+' · Vencimento dia '+esc(card.due)+'</p>'+
+'<div class="v2-statement"><p class="v2-sub">Fatura de '+monthTitle(month)+' · Vencimento dia '+esc(card.due)+'</p>'+(purchases.length?'<button type="button" class="v2-secondary" data-action="payCard:'+esc(card.id)+'">'+(purchases.every(x=>x.status==='realizado')?'Reabrir fatura':'Marcar fatura paga')+'</button>':'')+'</div>'+
 (purchases.length?purchases.map(itemRow).join(''):'<p class="v2-empty">Sem compras nessa fatura.</p>')+'</section>'
 }).join('')+
 (!db.cards.length?'<div class="v2-panel v2-empty">Cadastre cartões em Configurações para acompanhar compras.</div>':'');
@@ -328,6 +328,14 @@ const [cmd,id]=action.split(':');
 if(cmd==='editCard'){openCard(id);return}
 if(cmd==='removeCard'){confirmRemoveCard(id);return}
 if(cmd==='primary'){db.cards=db.cards.map(x=>({...x,primary:x.id===id}));write();return}
+if(cmd==='payCard'){
+const purchases=forMonth(month).filter(x=>x.cardId===id&&(x.payment==='Crédito'||x.type==='cartao'));
+if(!purchases.length)return;
+const allPaid=purchases.every(x=>x.status==='realizado');
+if(!confirm(allPaid?'Reabrir a fatura e marcar compras como previstas?':'Confirmar pagamento desta fatura? Nenhuma nova despesa será criada.'))return;
+const ids=new Set(purchases.map(x=>x.id));
+db.items=db.items.map(x=>ids.has(x.id)?{...x,status:allPaid?'previsto':'realizado'}:x);write();return
+}
 if(cmd==='editAccount'){openAccount(id);return}
 if(cmd==='removeAccount'){
 if(db.items.some(x=>x.accountId===id)||db.fixed.some(x=>x.paymentSource==='conta:'+id))return alert('Conta vinculada a lançamentos ou despesas fixas. Altere-os antes de excluir.');
@@ -363,11 +371,11 @@ if(count>1){
 const card=db.cards.find(x=>x.id===cardId),first=creditFirstMonth(date,card),cents=Math.round(amount*100),baseCents=Math.floor(cents/count);
 for(let i=0;i<count;i++){const each=(baseCents+(i===count-1?cents-baseCents*count:0))/100;
 db.items.push({...base,id:uid(),amount:each,date:monthDate(addMonth(first,i),Number(card?.due)||15),
-purchaseDate:date,installmentGroup:group,installmentNo:i+1,installmentCount:count,status:i?'previsto':status})}
+purchaseDate:date,installmentGroup:group,installmentNo:i+1,installmentCount:count,status:status==='realizado'&&date<=today()&&monthDate(addMonth(first,i),Number(card?.due)||15)<=today()?'realizado':'previsto'})}
 }else{
  const card=db.cards.find(x=>x.id===cardId);
  const billDate=payment==='Crédito'?monthDate(creditFirstMonth(date,card),Number(card?.due)||15):date;
- db.items.push({...base,id:old?.id||uid(),amount,date:billDate,purchaseDate:payment==='Crédito'?date:null,installmentGroup:null,installmentNo:null,installmentCount:null});
+ db.items.push({...base,id:old?.id||uid(),amount,date:billDate,status:payment==='Crédito'&&billDate>today()?'previsto':status,purchaseDate:payment==='Crédito'?date:null,installmentGroup:null,installmentNo:null,installmentCount:null});
 }
 editItem=null;month=payment==='Crédito'?creditFirstMonth(date,db.cards.find(x=>x.id===cardId)):ym(date);write();go('lancamentos');
 }
