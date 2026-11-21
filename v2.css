@@ -169,3 +169,14 @@ body{min-height:100dvh}button,input,select,textarea{font:inherit}
 /* Riachuelo: quadro 1:1, marca ampliada até as bordas internas */
 .v2-plastic-head .v2-bank-logo--riachuelo{width:42px;height:42px;min-width:42px;min-height:42px;flex:0 0 42px;aspect-ratio:1/1;border-radius:7px;background:#000;overflow:hidden}
 .v2-plastic-head .v2-bank-logo--riachuelo img{width:100%;height:100%;inset:0;object-fit:contain;object-position:center;transform:none;transform-origin:center;max-width:100%;padding:2px;box-sizing:border-box;background:#000}
+
+/* Planejamento: lista de despesas fixas recolhida por padrão */
+.v2-collapsible{padding:0!important;overflow:hidden}
+.v2-collapsible>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:20px 22px;font-size:15px;font-weight:650;color:#171717;user-select:none}
+.v2-collapsible>summary::-webkit-details-marker{display:none}
+.v2-collapsible>summary:focus-visible{outline:2px solid #555;outline-offset:-3px;border-radius:17px}
+.v2-collapse-meta{display:inline-flex;align-items:center;gap:12px;color:#858585;font-weight:450;font-size:12px;white-space:nowrap}
+.v2-collapse-arrow{font-size:18px;transition:transform .18s ease;display:inline-block}
+.v2-collapsible[open] .v2-collapse-arrow{transform:rotate(180deg)}
+.v2-collapsible-body{border-top:1px solid #eee;padding:8px 22px 16px}
+@media(max-width:450px){.v2-collapsible>summary{padding:17px}.v2-collapsible-body{padding:6px 17px 14px}}
