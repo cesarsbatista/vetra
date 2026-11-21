@@ -45,7 +45,7 @@ NAV.innerHTML=[['inicio','⌂','Início','Início'],['lancamentos','☷','Lança
 if(!HDR.querySelector('[data-action="new"]'))HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span><small>V2</small></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
 }
 function monthBar(){return '<div class="v2-month"><button data-action="prevMonth" aria-label="Mês anterior">‹</button><strong>'+monthTitle(month)+'</strong><button data-action="nextMonth" aria-label="Próximo mês">›</button></div>'}
-function bankName(name){const n=String(name||'').toLowerCase();return BANKS.find(x=>x!=='Outro'&&n.includes(x.toLowerCase()))||'Instituição'}
+function bankName(name){const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const n=normalize(name);return BANKS.find(x=>x!=='Outro'&&n.includes(normalize(x)))||(n.startsWith('bb ')||n==='bb'?'Banco do Brasil':'Instituição')}
 function logo(name){
 const brand=bankName(name);
 const paths={
