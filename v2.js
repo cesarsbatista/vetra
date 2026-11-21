@@ -42,7 +42,7 @@ render();
 }
 function titleNav(){
 NAV.innerHTML=[['inicio','⌂','Início','Início'],['lancamentos','☷','Lançamentos','Lanç.'],['cartoes','▤','Cartões','Cartões'],['investimentos','◇','Investimentos','Invest.'],['planejamento','▦','Planejamento','Plan.'],['configuracoes','⚙','Configurações','Ajustes']].map(n=>'<button class="tab '+(page===n[0]?'active':'')+'" data-page="'+n[0]+'"><span class="ico">'+n[1]+'</span><span data-short="'+n[3]+'">'+n[2]+'</span></button>').join('');
-if(!HDR.querySelector('.v2-header-add'))HDR.innerHTML='<div class="brand"><span class="mark"></span><span>VETRA</span></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
+if(!HDR.querySelector('.v2-header-add'))HDR.innerHTML='<div class="brand"><span>VETRA</span></div><button class="v2-primary v2-header-add" data-action="new">＋ <span>Novo lançamento</span></button><button id="profile" type="button" hidden aria-hidden="true"></button>';
 const headerAction=HDR.querySelector('.v2-header-add');
 if(headerAction){
 const onSettings=page==='configuracoes';
