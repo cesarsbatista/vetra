@@ -115,6 +115,17 @@ let mv=e.target.closest('[data-card-move]');if(mv){
 }
 let ed=e.target.closest('[data-edit]');if(ed){editId=ed.dataset.edit;go('novo');return}let a=e.target.closest('[data-action]');if(a){const action=a.dataset.action;if(['cards','investimentos'].includes(action))go(action);else if(action==='export')exportCSV();else if(action==='backup')backup();else if(action==='import')q('#importFile').click();return}if(e.target.id==='delete'){if(confirm('Excluir este lançamento?')){db.items=db.items.filter(x=>x.id!==editId);persist();editId=null;go('lancamentos')}}if(e.target.id==='reset'){if(window.VETRA_CLOUD?.house){alert('Para evitar exclusões acidentais, não é possível zerar todo o orçamento compartilhado por aqui.');return}if(confirm('Apagar todos os lançamentos, cartões e orçamentos deste navegador? Esta ação não pode ser desfeita.')){db={items:[],cards:DEFAULT_CARDS,budgets:{},settings:{name:'Família'}};persist();go('inicio')}}if(e.target.id==='profile'&&!window.VETRA_CURRENT_SESSION)alert('VETRA · modo local. Seus dados estão armazenados neste navegador.')});
 document.addEventListener('change',e=>{if(e.target.id==='category')subcats();if(e.target.id==='importFile'&&e.target.files[0]){let reader=new FileReader();reader.onload=()=>{try{let data=JSON.parse(reader.result);if(!Array.isArray(data.items)||!Array.isArray(data.cards))throw Error('Formato inválido');if(confirm(window.VETRA_CLOUD?.house?'ATENÇÃO: restaurar este arquivo substituirá os lançamentos de toda a família na nuvem. Deseja continuar?':'Substituir todos os dados locais pelo backup selecionado?')){db={items:data.items,cards:data.cards,budgets:data.budgets||{},settings:data.settings||{}};persist();go('inicio')}}catch(err){alert('Não foi possível importar: '+err.message)}};reader.readAsText(e.target.files[0])}});
+function updateCardPreview(){
+ const form=document.getElementById('cardEditor'),preview=document.getElementById('cardLivePreview');
+ if(!form||!preview)return;
+ const d=new FormData(form);
+ const candidate={name:String(d.get('name')||'Meu cartão'),holder:String(d.get('holder')||''),
+ nickname:String(d.get('nickname')||''),brand:String(d.get('brand')||'Outra'),
+ color:String(d.get('color')||'sage'),last4:String(d.get('last4')||'')};
+ preview.innerHTML=cardPreview(candidate);
+}
+document.addEventListener('input',e=>{if(e.target.closest('#cardEditor'))updateCardPreview()});
+document.addEventListener('change',e=>{if(e.target.closest('#cardEditor'))updateCardPreview()});
 document.addEventListener('submit',e=>{
  if(e.target.id==='cardEditor'){
  e.preventDefault();const data=new FormData(e.target);
