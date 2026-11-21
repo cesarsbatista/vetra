@@ -91,7 +91,11 @@ function monthly(){
 const its=forMonth(month),inc=sum(its.filter(x=>x.type==='receita'&&x.status==='realizado')),out=sum(its.filter(x=>spent(x)&&x.status==='realizado'));
 const plannedIncome=sum(its.filter(x=>x.type==='receita')),plannedOut=sum(its.filter(spent));
 const fixed=fixedForMonth(month),fixedActual=fixed.filter(x=>x.paid).reduce((a,x)=>a+x.amount,0),fixedPlan=fixed.reduce((a,x)=>a+x.amount,0);
-return {its,inc,out,fixed,fixedActual,fixedPlan,net:inc-out-fixedActual,projected:plannedIncome-plannedOut-fixedPlan}
+const investmentFlows=its.filter(x=>x.type==='investimento');
+const transferValue=(x)=>x.category==='Resgate'?-Number(x.amount||0):Number(x.amount||0);
+const invActual=investmentFlows.filter(x=>x.status==='realizado').reduce((v,x)=>v+transferValue(x),0);
+const invPlan=investmentFlows.reduce((v,x)=>v+transferValue(x),0);
+return {its,inc,out,fixed,fixedActual,fixedPlan,invActual,invPlan,net:inc-out-fixedActual-invActual,projected:plannedIncome-plannedOut-fixedPlan-invPlan}
 }
 function home(){
 const a=monthly(),invest=investmentTotals(),categories={};
