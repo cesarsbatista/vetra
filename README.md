@@ -1,28 +1,41 @@
-# VETRA — V1
+# VETRA — Finanças compartilhadas
 
-Aplicativo web de controle financeiro, mobile-first, inspirado na organização da planilha financeira original.
+Aplicativo de controle financeiro pessoal e familiar com acesso por e-mail, código OTP de seis dígitos, orçamento compartilhado e versões responsivas para **iPhone 16 Pro Max** e **desktop**.
 
-## Funcionalidades implementadas
+**Aplicativo:** https://cesarsbatista.github.io/vetra/
 
-- Painel financeiro mensal, valores realizados e projeção;
-- Registro, edição e exclusão de receitas, despesas, compras por cartão e aportes;
-- Categorias e subcategorias adaptadas da planilha;
-- Registro de movimentações previstas e realizadas;
-- Orçamento mensal de despesas;
-- Cartões pré-cadastrados (Banco do Brasil, Itaú e Riachuelo);
-- Exportação CSV, backup e restauração JSON;
-- Instalação básica como PWA pelo navegador compatível.
+## V1.3 — Implementado
 
-## Executar
+- Supabase Auth independente do ORBITRIP, com código OTP de 6 dígitos e sessão persistente.
+- Orçamento familiar compartilhado: uma pessoa cria o orçamento, a segunda recebe convite vinculado ao seu e-mail e o aceita ao entrar.
+- Banco de dados PostgreSQL no Supabase, protegido por políticas RLS por participação no orçamento.
+- Sincronização entre dispositivos via Supabase Realtime, com controle de revisão contra sobrescrita simultânea.
+- Painel mensal, despesas e receitas previstas/realizadas, investimentos, cartões e planejamento.
+- Categorias originais da planilha de controle financeiro.
+- Exportação CSV, backup JSON e importação explícita de lançamentos locais antigos.
+- Interface móvel com navegação inferior e interface desktop com menu lateral e área de trabalho ampliada.
+- Modo local opcional para testes sem sincronização.
 
-Abra `index.html` em um navegador, ou hospede os arquivos em qualquer servidor estático. Para desenvolvimento local, por exemplo: `python -m http.server 8080`, depois abra `http://localhost:8080`.
+## Uso
 
-## Importante
+1. Abra o aplicativo e faça login com seu e-mail e o OTP recebido.
+2. Selecione **Criar orçamento familiar** no primeiro acesso.
+3. Em **Mais**, crie um convite para o e-mail da segunda pessoa.
+4. A pessoa entra com o próprio e-mail, aceita o convite e passa a utilizar os mesmos dados.
+5. Se houver registros antigos neste navegador, abra **Mais → Importar meus lançamentos locais** após fazer backup.
 
-**V1 local, sem login:** dados persistem apenas no `localStorage` do navegador atual e não sincronizam entre dispositivos. Use a opção **Mais → Backup JSON** para proteger seus dados. Limpar os dados do site apagará os registros locais. O app não é um ambiente de produção para armazenar informações financeiras sensíveis.
+**Convites não enviam e-mail automaticamente nesta versão**: o proprietário deve avisar a pessoa convidada.
 
-**Limitações assumidas da V1:** não há importação automática da planilha/PDF, cálculo de parcelamentos, apuração de faturas híbridas, sincronização familiar, autenticação, balanço patrimonial nem atualização de cotações. Os cartões nesta V1 servem para identificar lançamentos; não há controle completo de faturamento. Investimentos contabilizam somente aportes. Evite contabilizar a mesma compra novamente ao registrar pagamentos de faturas.
+## Desenvolvimento
 
-## Próxima etapa
+Aplicação estática (HTML, CSS, JavaScript) com Supabase. Hospedagem por GitHub Pages. A chave em `supabase-config.js` é uma **publishable key pública**; não há chaves secretas no frontend.
 
-Integração com Supabase e autenticação individual, compartilhamento de orçamento, reconciliação de cartões e parcelas, importação assistida da planilha e ajustes adicionais de PWA.
+Consulte o guia completo: [V1.3 — Banco compartilhado e layouts](docs/V1.3-CLOUD-RESPONSIVO.md).
+
+## Limitações
+
+- Cartões e investimentos ainda têm recursos simplificados (sem parcelamentos automáticos ou rentabilidade).
+- Conflitos de edição não são mesclados automaticamente; exporte um backup JSON antes de atualizar se houver aviso de sincronização.
+- Não há operação offline sincronizada.
+- A importação legada é explícita e inclui lançamentos, não todos os ajustes de orçamento/cartões.
+- O fluxo completo deve ser testado com as duas contas em seus dispositivos antes de ser utilizado como controle financeiro definitivo.
