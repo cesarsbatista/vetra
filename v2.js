@@ -35,10 +35,10 @@ const action=(value,cmd,secondary=false)=>'<button class="'+(secondary?'v2-secon
 const spent=x=>x.type==='despesa'||x.type==='cartao';
 const forMonth=s=>db.items.filter(x=>ym(x.date)===s);
 const sum=a=>a.reduce((v,x)=>v+Number(x.amount||0),0);
-const isCardTransaction=x=>!!x.cardId&&(x.payment==='Crédito'||x.type==='cartao'||x.type==='transferencia');
+const isCardTransaction=x=>x.payment==='Crédito'||x.type==='cartao'||(x.type==='transferencia'&&!!x.cardId);
 const cardBillingMonth=x=>x.invoiceMonth||ym(x.date);
 const purchaseMonth=x=>ym(x.purchaseDate||x.date);
-const cardBillItems=(billingMonth,cardId)=>db.items.filter(x=>isCardTransaction(x)&&cardBillingMonth(x)===billingMonth&&(!cardId||x.cardId===cardId));
+const cardBillItems=(billingMonth,cardId)=>db.items.filter(x=>x.cardId&&isCardTransaction(x)&&cardBillingMonth(x)===billingMonth&&(!cardId||x.cardId===cardId));
 const cardPayments=()=>Array.isArray(db.settings?.cardPayments)?db.settings.cardPayments:[];
 const confirmedCardPaymentsForMonth=m=>cardPayments().filter(p=>p.status==='pago'&&ym(p.paidAt)===m);
 
