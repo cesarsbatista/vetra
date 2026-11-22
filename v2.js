@@ -35,6 +35,13 @@ const action=(value,cmd,secondary=false)=>'<button class="'+(secondary?'v2-secon
 const spent=x=>x.type==='despesa'||x.type==='cartao';
 const forMonth=s=>db.items.filter(x=>ym(x.date)===s);
 const sum=a=>a.reduce((v,x)=>v+Number(x.amount||0),0);
+const isCardTransaction=x=>!!x.cardId&&(x.payment==='Crédito'||x.type==='cartao'||x.type==='transferencia');
+const cardBillingMonth=x=>x.invoiceMonth||ym(x.date);
+const purchaseMonth=x=>ym(x.purchaseDate||x.date);
+const cardBillItems=(billingMonth,cardId)=>db.items.filter(x=>isCardTransaction(x)&&cardBillingMonth(x)===billingMonth&&(!cardId||x.cardId===cardId));
+const cardPayments=()=>Array.isArray(db.settings?.cardPayments)?db.settings.cardPayments:[];
+const confirmedCardPaymentsForMonth=m=>cardPayments().filter(p=>p.status==='pago'&&ym(p.paidAt)===m);
+
 function write(){
 if(window.VETRA_CLOUD?.house)window.VETRA_CLOUD.queueSave(db);
 else localStorage.setItem(KEY,JSON.stringify(db));
@@ -120,21 +127,30 @@ const fixedForMonth=s=>db.fixed.map(f=>fixedOccurrence(f,s)).filter(Boolean);
 function monthly(){
 const its=forMonth(month);
 const inc=sum(its.filter(x=>x.type==='receita'&&x.status==='realizado'));
-const out=sum(its.filter(x=>spent(x)&&x.status==='realizado'));
+const nonCardExpenses=its.filter(x=>spent(x)&&!isCardTransaction(x));
+const cashExpenses=nonCardExpenses.filter(x=>x.operationRole!=='custo_financeiro');
+const out=sum(cashExpenses.filter(x=>x.status==='realizado'));
 const plannedIncome=sum(its.filter(x=>x.type==='receita'));
-const plannedOut=sum(its.filter(spent));
+const plannedOut=sum(cashExpenses);
 const incomePending=sum(its.filter(x=>x.type==='receita'&&x.status!=='realizado'));
-const variablePending=sum(its.filter(x=>spent(x)&&x.status!=='realizado'));
+const variablePending=sum(cashExpenses.filter(x=>x.status!=='realizado'));
 const fixed=fixedForMonth(month);
 const fixedActual=fixed.filter(x=>x.paid).reduce((a,x)=>a+x.amount,0);
 const fixedPending=fixed.filter(x=>!x.paid).reduce((a,x)=>a+x.amount,0);
 const fixedPlan=fixedActual+fixedPending;
+const cardDue=sum(cardBillItems(month));
+const cardPaymentActual=sum(confirmedCardPaymentsForMonth(month));
+const settledForBill=cardPayments().filter(p=>p.status==='pago'&&p.invoiceMonth===month).reduce((n,p)=>n+Number(p.amount||0),0);
+const cardPending=Math.max(0,cardDue-settledForBill);
+const internalCredit=sum(its.filter(x=>x.type==='transferencia'&&x.operationRole==='credito_conta'&&x.status==='realizado'));
 const investmentFlows=its.filter(x=>x.type==='investimento');
 const transferValue=x=>x.category==='Resgate'?-Number(x.amount||0):Number(x.amount||0);
 const invActual=investmentFlows.filter(x=>x.status==='realizado').reduce((v,x)=>v+transferValue(x),0);
 const invPlan=investmentFlows.reduce((v,x)=>v+transferValue(x),0);
 const invPending=invPlan-invActual;
-return {its,inc,out,fixed,fixedActual,fixedPlan,fixedPending,plannedIncome,plannedOut,incomePending,variablePending,invActual,invPlan,invPending,net:inc-out-fixedActual-invActual,projected:plannedIncome-plannedOut-fixedPlan-invPlan}
+return {its,inc,out,cardDue,cardPending,cardPaymentActual,internalCredit,fixed,fixedActual,fixedPlan,fixedPending,plannedIncome,plannedOut,incomePending,variablePending,invActual,invPlan,invPending,
+net:inc+internalCredit-out-cardPaymentActual-fixedActual-invActual,
+projected:plannedIncome+internalCredit-plannedOut-cardPaymentActual-cardPending-fixedPlan-invPlan};
 }
 function forecastRow({title,detail,date,amount,kind}){
 return '<div class="v2-forecast-row"><span class="v2-forecast-sign '+(kind==='income'?'v2-forecast-sign--income':'v2-forecast-sign--expense')+'">'+(kind==='income'?'+':'−')+'</span>'+
@@ -143,16 +159,16 @@ return '<div class="v2-forecast-row"><span class="v2-forecast-sign '+(kind==='in
 }
 function forecastPanel(a){
 const fixedPending=a.fixed.filter(f=>!f.paid);
-const pendingItems=a.its.filter(x=>x.status!=='realizado'&&(x.type==='receita'||spent(x)));
+const pendingItems=a.its.filter(x=>x.status!=='realizado'&&(x.type==='receita'||(spent(x)&&!isCardTransaction(x))));
 const entries=[
 ...pendingItems.map(x=>({title:x.origin||x.description||'Sem descrição',detail:x.type==='receita'?'Receita prevista':x.cardId?'Compra no cartão':'Despesa variável prevista',date:x.date,amount:Number(x.amount)||0,kind:x.type==='receita'?'income':'expense'})),
 ...fixedPending.map(x=>({title:x.description,detail:'Despesa fixa · '+esc(x.category||'Outros'),date:x.date,amount:x.amount,kind:'expense'}))
 ].sort((x,y)=>x.date.localeCompare(y.date));
-const forecastNet=a.incomePending-a.variablePending-a.fixedPending-a.invPending;
+const forecastNet=a.incomePending-a.variablePending-a.fixedPending-a.cardPending-a.invPending;
 return '<section class="v2-forecast v2-panel" aria-label="Previsões do mês">'+
 '<div class="v2-panel-top"><div><h2>Previsto para '+monthTitle(month)+'</h2><p class="v2-sub">Valores pendentes, ainda não realizados</p></div>'+pill(entries.length+' '+(entries.length===1?'compromisso':'registros'))+'</div>'+
 '<div class="v2-forecast-grid">'+
-[['Receitas a receber',a.incomePending,'income'],['Despesas variáveis previstas',a.variablePending,'expense'],['Despesas fixas a pagar',a.fixedPending,'expense'],['Saldo das previsões pendentes',forecastNet,'balance']].map(([label,value,kind])=>
+[['Receitas a receber',a.incomePending,'income'],['Despesas variáveis previstas',a.variablePending,'expense'],['Faturas a vencer',a.cardPending,'expense'],['Despesas fixas a pagar',a.fixedPending,'expense'],['Saldo das previsões pendentes',forecastNet,'balance']].map(([label,value,kind])=>
 '<div class="v2-forecast-kpi'+(kind==='balance'&&value<0?' v2-balance-negative':'')+'"><small>'+label+'</small><strong>'+CM(value)+'</strong>'+(kind==='balance'?'<span>Inclui aportes e resgates previstos</span>':'')+'</div>').join('')+
 '</div>'+
 '<div class="v2-forecast-explainer"><span>Já realizado: <b>'+CM(a.net)+'</b></span><span>Movimentos pendentes: <b>'+CM(forecastNet)+'</b></span><span>Saldo projetado: <b>'+CM(a.projected)+'</b></span></div>'+
@@ -163,10 +179,10 @@ return '<section class="v2-forecast v2-panel" aria-label="Previsões do mês">'+
 }
 function home(){
 const a=monthly(),invest=investmentTotals(),categories={};
-a.its.filter(spent).forEach(x=>{const k=x.category||'Outros';categories[k]=(categories[k]||0)+Number(x.amount||0)});
+db.items.filter(x=>spent(x)&&purchaseMonth(x)===month).forEach(x=>{const k=x.category||'Outros';categories[k]=(categories[k]||0)+Number(x.amount||0)});
 return banner('Visão geral','Seu controle financeiro pessoal e familiar')+monthBar()+
-'<div class="v2-overview"><div class="v2-hero'+(a.net<0?' v2-balance-negative':'')+'"><small>Saldo realizado do mês</small><strong>'+CM(a.net)+'</strong><span>Projeção para o mês '+CM(a.projected)+'</span></div>'+
-[['Receitas recebidas',a.inc],['Despesas variáveis realizadas',a.out],['Despesas fixas pagas',a.fixedActual],['Patrimônio investido',invest.total]].map(([t,v])=>'<div class="v2-kpi"><small>'+t+'</small><strong>'+CM(v)+'</strong></div>').join('')+'</div>'+
+'<div class="v2-overview"><div class="v2-hero'+(a.net<0?' v2-balance-negative':'')+'"><small>Fluxo de caixa confirmado do mês</small><strong>'+CM(a.net)+'</strong><span>Projeção para o mês '+CM(a.projected)+'</span></div>'+
+[['Receitas recebidas',a.inc],['Saídas diretas confirmadas',a.out],['Faturas pagas (confirmadas)',a.cardPaymentActual],['Faturas com vencimento no mês',a.cardDue],['Despesas fixas pagas',a.fixedActual],['Patrimônio investido',invest.total]].map(([t,v])=>'<div class="v2-kpi"><small>'+t+'</small><strong>'+CM(v)+'</strong></div>').join('')+'</div>'+
 forecastPanel(a)+
 '<div class="v2-columns"><section class="v2-panel"><div class="v2-panel-top"><h2>Despesas por categoria</h2>'+pill(monthTitle(month))+'</div>'+
 (Object.entries(categories).length?Object.entries(categories).sort((a,b)=>b[1]-a[1]).map(([key,value])=>'<div class="v2-metric"><span>'+esc(key)+'</span><b>'+CM(value)+'</b></div>').join(''):'<p class="v2-empty">Ainda não há despesas variáveis registradas.</p>')+'</section>'+
@@ -236,11 +252,12 @@ return '<div class="v2-panel"><div class="v2-panel-top"><h2>Cartões cadastrados
 (ordered.map(cardInfo).join('')||'<p class="v2-empty">Nenhum cartão cadastrado.</p>')+'</div>';
 }
 function cardPurchases(){
-const list=forMonth(month).filter(x=>x.cardId&&(x.payment==='Crédito'||x.type==='cartao'));
+const list=cardBillItems(month);
 return banner('Cartões','Compras, parcelas e faturas')+monthBar()+
-'<div class="v2-overview"><div class="v2-kpi"><small>Compras do mês</small><strong>'+CM(sum(list))+'</strong></div><div class="v2-kpi"><small>Cartões ativos</small><strong>'+db.cards.length+'</strong></div></div>'+
+'<div class="v2-overview"><div class="v2-kpi"><small>Cobranças na fatura do mês</small><strong>'+CM(sum(list))+'</strong></div><div class="v2-kpi"><small>Cartões ativos</small><strong>'+db.cards.length+'</strong></div></div>'+
 db.cards.map(card=>{
 const purchases=list.filter(x=>x.cardId===card.id);
+const paymentRecord=cardPayments().find(p=>p.cardId===card.id&&p.invoiceMonth===month&&p.status==='pago');
 const nubankStatement=card.id==='nubank-ana'?(db.settings?.nubankStatements2026||[]).find(x=>x.month===month):null;
 const nubankDetails=card.id!=='nubank-ana'?'':(
  nubankStatement?
@@ -254,7 +271,7 @@ const nubankDetails=card.id!=='nubank-ana'?'':(
  '<div class="v2-invoice-proof"><div class="v2-invoice-proof-title"><strong>Nubank · Maio de 2026</strong><span>Conferência pendente</span></div><p>Valor de R$ 680,92 informado na planilha GASTOS. A fatura PDF não foi fornecida; compras e pagamento ainda não foram verificados.</p></div>'
  :'');
 return '<section class="v2-panel"><div class="v2-panel-top"><h2>'+esc(card.nickname||card.name)+'</h2>'+pill(CM(sum(purchases)))+'</div>'+
-'<div class="v2-statement"><p class="v2-sub">Fatura de '+monthTitle(month)+' · Vencimento dia '+esc(card.due)+'</p>'+(purchases.length&&card.id!=='nubank-ana'?'<button type="button" class="v2-secondary" data-action="payCard:'+esc(card.id)+'">'+(purchases.every(x=>x.status==='realizado')?'Reabrir fatura':'Marcar fatura paga')+'</button>':'')+'</div>'+nubankDetails+
+'<div class="v2-statement"><p class="v2-sub">Fatura de '+monthTitle(month)+' · Vencimento dia '+esc(card.due)+' · '+(paymentRecord?'Pagamento registrado: '+CM(paymentRecord.amount)+' em '+esc(paymentRecord.paidAt):'Pagamento não confirmado')+'</p>'+(purchases.length&&card.id!=='nubank-ana'?'<button type="button" class="v2-secondary" data-action="payCard:'+esc(card.id)+'">'+(paymentRecord?'Rever pagamento':'Registrar pagamento da fatura')+'</button>':'')+'</div>'+nubankDetails+
 (purchases.length?purchases.map(itemRow).join(''):'<p class="v2-empty">Sem compras nessa fatura.</p>')+'</section>'
 }).join('')+
 (!db.cards.length?'<div class="v2-panel v2-empty">Cadastre cartões em Configurações para acompanhar compras.</div>':'');
@@ -423,10 +440,11 @@ const rows=[];
 const cardName=id=>{const card=db.cards.find(x=>x.id===id);return card?(card.nickname||card.name)+' · '+(card.holder||'Titular não informado'):'Cartão não identificado'};
 const accountName=id=>db.accounts.find(x=>x.id===id)?.bank||'';
 for(const x of db.items){
-if(!spent(x)||ym(x.date)<start||ym(x.date)>end)continue;
+const reportMonth=purchaseMonth(x);
+if(!spent(x)||reportMonth<start||reportMonth>end)continue;
 const onCard=!!x.cardId||x.payment==='Crédito'||x.type==='cartao';
 rows.push({
-month:ym(x.date),date:x.date,description:x.description||'Despesa sem descrição',
+month:reportMonth,date:x.purchaseDate||x.date,description:x.description||'Despesa sem descrição',
 type:onCard?'Cartão de crédito':'Despesa avulsa / variável',
 category:x.category||'Sem categoria',amount:reportCents(x.amount),status:x.status==='realizado'?'Realizado (lançamento)':'Previsto',
 payment:x.payment||'Não informado',card:onCard?cardName(x.cardId):'',
@@ -475,7 +493,7 @@ const line=arr=>output.push(arr.map(reportCsvCell).join(';'));
 const blank=()=>output.push('');
 line(['VETRA · RELATÓRIO DETALHADO DE DESPESAS']);
 line(['Período',r.start,r.end]);
-line(['Critério','Competência mensal; cartão de crédito não somado novamente ao pagamento da fatura']);
+line(['Critério','Despesas por data da compra; faturas e pagamentos controlados separadamente no fluxo de caixa']);
 line(['Critério de realizado','Lançamento realizado não comprova necessariamente quitação da fatura do cartão']);
 line(['Total geral (R$)',reportMoney(r.total)]);
 line(['Realizado / pago (R$)',reportMoney(r.realized)]);
@@ -578,12 +596,25 @@ if(cmd==='editCard'){openCard(id);return}
 if(cmd==='removeCard'){confirmRemoveCard(id);return}
 if(cmd==='primary'){db.cards=db.cards.map(x=>({...x,primary:x.id===id}));write();return}
 if(cmd==='payCard'){
-const purchases=forMonth(month).filter(x=>x.cardId===id&&(x.payment==='Crédito'||x.type==='cartao'));
+const purchases=cardBillItems(month,id);
 if(!purchases.length)return;
-const allPaid=purchases.every(x=>x.status==='realizado');
-if(!confirm(allPaid?'Reabrir a fatura e marcar compras como previstas?':'Confirmar pagamento desta fatura? Nenhuma nova despesa será criada.'))return;
-const ids=new Set(purchases.map(x=>x.id));
-db.items=db.items.map(x=>ids.has(x.id)?{...x,status:allPaid?'previsto':'realizado'}:x);write();return
+const allPayments=cardPayments();
+const existing=allPayments.find(x=>x.cardId===id&&x.invoiceMonth===month&&x.status==='pago');
+if(existing&&confirm('Existe pagamento registrado de '+CM(existing.amount)+' em '+existing.paidAt+'. Deseja remover essa confirmação?')){
+ db.settings={...(db.settings||{}),cardPayments:allPayments.filter(x=>x!==existing)};write();return;
+}
+if(existing)return;
+const estimate=sum(purchases);
+const amountText=prompt('Valor EFETIVAMENTE pago nesta fatura (R$). Confira o extrato: a soma dos lançamentos ('+CM(estimate)+') pode diferir por créditos/encargos.',estimate.toFixed(2).replace('.',','));
+if(amountText===null)return;
+const normalized=amountText.trim().replace(/\./g,'').replace(',','.');
+const amount=Number(normalized);
+if(!Number.isFinite(amount)||amount<=0)return alert('Informe um valor de pagamento válido.');
+const paidAt=prompt('Data efetiva do pagamento (AAAA-MM-DD):',monthDate(month,Number(db.cards.find(x=>x.id===id)?.due)||10));
+if(paidAt===null)return;
+if(!/^\d{4}-\d{2}-\d{2}$/.test(paidAt)||Number.isNaN(Date.parse(paidAt)))return alert('Informe uma data válida, no formato AAAA-MM-DD.');
+if(!confirm('Registrar pagamento da fatura '+monthTitle(month)+' em '+paidAt+' no valor de '+CM(amount)+'? Afetará o caixa na data do pagamento, não na data das compras.'))return;
+db.settings={...(db.settings||{}),cardPayments:[...allPayments,{id:uid(),cardId:id,invoiceMonth:month,amount,paidAt,status:'pago'}]};write();return;
 }
 if(cmd==='editAccount'){openAccount(id);return}
 if(cmd==='removeAccount'){
